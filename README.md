@@ -1,3 +1,3 @@
 # Warehouse Environment & Security Monitoring System (IoT)
 
-He thong giam sat moi truong va an ninh kho hang.
+H? th?ng giám sát môi tru?ng và an ninh kho hàng.
