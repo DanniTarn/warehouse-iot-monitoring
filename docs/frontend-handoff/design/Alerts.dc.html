@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Cảnh báo</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1B5FCC}a:hover{color:#134A9F}
+button,select{font:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid #1B5FCC;outline-offset:2px}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 100vh; background: #EEF1F4; color: #101A26; font-family: 'Be Vietnam Pro', system-ui, sans-serif; font-size: 14px; line-height: 1.45">
+
+<nav aria-label="Điều hướng chính" style="flex: 1 1 232px; box-sizing: border-box; background: #101A26; color: #C4CEDA; padding: 20px 14px; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px">
+<span aria-hidden="true" style="display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; background: #1B5FCC; color: #FFFFFF">
+<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5V20H3v-9.5z"></path><path d="M8 20v-6h8v6"></path></svg>
+</span>
+<div style="display: flex; flex-direction: column">
+<span style="color: #FFFFFF; font-weight: 600; font-size: 15px">Giám sát kho</span>
+<span style="font-size: 12px; color: #9FB0C3">Môi trường &amp; an ninh</span>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 8px; color: #C4CEDA; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>
+<span>Tổng quan</span>
+</a>
+<a href="Devices.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 8px; color: #C4CEDA; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"></rect><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"></path></svg>
+<span>Thiết bị</span>
+</a>
+<a href="Alerts.dc.html" aria-current="page" style="display: flex; align-items: center; gap: 10px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 8px; background: #22344A; color: #FFFFFF; font-weight: 600; text-decoration: none">
+<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7 2.5 7h-17S6 15 6 9z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg>
+<span style="flex: 1">Cảnh báo</span>
+<span style="min-width: 22px; box-sizing: border-box; padding: 1px 6px; border-radius: 11px; background: #FFFFFF; color: #101A26; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; font-weight: 600; text-align: center">{{openCount}}</span>
+</a>
+<a href="History.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 8px; color: #C4CEDA; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+<span>Lịch sử</span>
+</a>
+<sc-if value="{{isAdmin}}" hint-placeholder-val="{{true}}">
+<a href="Users.dc.html" style="display: flex; align-items: center; gap: 10px; min-height: 44px; box-sizing: border-box; padding: 0 12px; border-radius: 8px; color: #C4CEDA; font-weight: 500; text-decoration: none">
+<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0"></path><path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.2a6.5 6.5 0 0 1 3.5 5.8"></path></svg>
+<span>Người dùng</span>
+</a>
+</sc-if>
+</div>
+<div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding: 14px 12px 4px; border-top: 1px solid #2A3A4D">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+<span style="color: #FFFFFF; font-weight: 500">{{username}}</span>
+<span style="padding: 2px 8px; border-radius: 6px; border: 1px solid #4A5D73; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; font-weight: 600; color: #C4CEDA">{{role}}</span>
+</div>
+<a href="Login.dc.html" style="display: flex; align-items: center; min-height: 44px; color: #9FB0C3; text-decoration: none">Đăng xuất</a>
+</div>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 28px 32px; display: flex; flex-direction: column; gap: 20px">
+
+<header style="display: flex; flex-direction: column; gap: 4px">
+<h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -0.01em">Cảnh báo</h1>
+<span style="color: #45525F">{{summary}}</span>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<div role="group" aria-label="Lọc theo trạng thái" style="display: flex; gap: 4px; padding: 4px; border-radius: 8px; background: #FFFFFF; border: 1px solid #D9DFE6">
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+<button type="button" aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; border: 0; border-radius: 6px; background: {{t.bg}}; color: {{t.fg}}; font-weight: 500">
+<span>{{t.label}}</span>
+<span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px">{{t.count}}</span>
+</button>
+</sc-for>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 12px">
+<select aria-label="Lọc theo mức độ" value="{{sev}}" onChange="{{onSev}}" style="height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid #A9B4C0; border-radius: 8px; background: #FFFFFF; color: #101A26">
+<option value="">Tất cả mức độ</option>
+<option value="CRITICAL">CRITICAL</option>
+<option value="WARNING">WARNING</option>
+<option value="INFO">INFO</option>
+</select>
+<select aria-label="Lọc theo thiết bị" value="{{dev}}" onChange="{{onDev}}" style="height: 44px; box-sizing: border-box; padding: 0 12px; border: 1px solid #A9B4C0; border-radius: 8px; background: #FFFFFF; color: #101A26">
+<option value="">Tất cả thiết bị</option>
+<option value="NODE1_ENV">NODE1_ENV</option>
+<option value="NODE2_SEC">NODE2_SEC</option>
+</select>
+</div>
+</div>
+
+<section aria-label="Danh sách cảnh báo" style="background: #FFFFFF; border: 1px solid #D9DFE6; border-radius: 10px; padding: 0 18px; display: flex; flex-direction: column">
+<sc-for list="{{rows}}" as="a" hint-placeholder-count="5">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 16px 0; border-bottom: 1px solid #E3E8ED">
+<span style="flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 104px; height: 28px; box-sizing: border-box; border-radius: 6px; background: {{a.bg}}; color: {{a.fg}}; font-size: 12px; font-weight: 600">
+<sc-if value="{{a.isCritical}}" hint-placeholder-val="{{false}}">
+<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5h8l5.5 5.5v8L16 21.5H8L2.5 16V8L8 2.5z"></path><path d="M12 7.5v5.5M12 16.2v.3"></path></svg>
+</sc-if>
+<sc-if value="{{a.isWarning}}" hint-placeholder-val="{{true}}">
+<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 2.5 20h19L12 3.5z"></path><path d="M12 10v4.5M12 17.2v.3"></path></svg>
+</sc-if>
+<sc-if value="{{a.isInfo}}" hint-placeholder-val="{{false}}">
+<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5.5M12 7.6v.3"></path></svg>
+</sc-if>
+<span>{{a.sev}}</span>
+</span>
+<div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 15px; font-weight: 600">{{a.msg}}</span>
+<span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; color: #5E6B78">{{a.meta}}</span>
+</div>
+<sc-if value="{{a.showAck}}" hint-placeholder-val="{{true}}">
+<button type="button" onClick="{{a.ack}}" style="min-height: 44px; padding: 0 16px; border-radius: 8px; border: 1px solid #101A26; background: #101A26; color: #FFFFFF; font-weight: 600">Xác nhận đã xử lý</button>
+</sc-if>
+<sc-if value="{{a.showWaiting}}" hint-placeholder-val="{{false}}">
+<span style="font-weight: 600; color: #8A5300">Chưa xử lý</span>
+</sc-if>
+<sc-if value="{{a.done}}" hint-placeholder-val="{{false}}">
+<span style="display: inline-flex; align-items: center; gap: 8px; color: #45525F">
+<svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#0B6B2E" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.5l5 5 10-11"></path></svg>
+<span>{{a.doneText}}</span>
+</span>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+<div style="padding: 28px 0; color: #45525F">Không có cảnh báo nào khớp bộ lọc.</div>
+</sc-if>
+<div style="padding: 14px 0; color: #45525F; font-size: 13px">{{shown}}</div>
+</section>
+
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"role":{"editor":"enum","options":["ADMIN","OPERATOR","VIEWER"],"default":"ADMIN","section":"Trạng thái"},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const role = this.props.role ?? 'ADMIN';
+    const viewer = role === 'VIEWER';
+    const username = { ADMIN: 'admin', OPERATOR: 'operator01', VIEWER: 'viewer01' }[role] || 'admin';
+    const tab = s.tab || 'open';
+    const sev = s.sev || '';
+    const dev = s.dev || '';
+    const ackedNow = s.ackedNow || {};
+
+    const SEV = {
+      CRITICAL: { bg: '#FBE4E2', fg: '#8F1D17' },
+      WARNING: { bg: '#FFEFC7', fg: '#6E4200' },
+      INFO: { bg: '#DCE8FA', fg: '#134A9F' },
+    };
+    const all = [
+      { id: 5, sev: 'CRITICAL', type: 'DOOR_BREACH', dev: 'NODE2_SEC', at: '13/10/2026 21:37:12', msg: 'Cửa kho bị mở ngoài giờ giới nghiêm' },
+      { id: 4, sev: 'WARNING', type: 'HUMIDITY_HIGH', dev: 'NODE1_ENV', at: '13/10/2026 21:31:40', msg: 'Độ ẩm 67,2 % vượt ngưỡng 65 %, quạt đã tự bật' },
+      { id: 3, sev: 'CRITICAL', type: 'MOTION_INTRUSION', dev: 'NODE2_SEC', at: '12/10/2026 23:14:05', msg: 'Phát hiện chuyển động trong kho ngoài giờ', by: 'operator01', doneAt: '12/10 23:19' },
+      { id: 2, sev: 'CRITICAL', type: 'SMOKE_CRITICAL', dev: 'NODE1_ENV', at: '11/10/2026 14:02:33', msg: 'Nồng độ khói 412 ppm vượt ngưỡng 300 ppm', by: 'admin', doneAt: '11/10 14:10' },
+      { id: 1, sev: 'INFO', type: 'DEVICE_OFFLINE', dev: 'NODE1_ENV', at: '10/10/2026 09:26:18', msg: 'Mất kết nối 45 giây, thiết bị đã tự kết nối lại', by: 'admin', doneAt: '10/10 09:40' },
+    ].map((a) => (ackedNow[a.id] ? { ...a, by: username, doneAt: '13/10 21:42' } : a));
+
+    const isOpen = (a) => !a.by;
+    const openCount = all.filter(isOpen).length;
+    const rows = all
+      .filter((a) => tab === 'all' || (tab === 'open' ? isOpen(a) : !isOpen(a)))
+      .filter((a) => !sev || a.sev === sev)
+      .filter((a) => !dev || a.dev === dev)
+      .map((a) => ({
+        sev: a.sev, msg: a.msg, bg: SEV[a.sev].bg, fg: SEV[a.sev].fg,
+        isCritical: a.sev === 'CRITICAL', isWarning: a.sev === 'WARNING', isInfo: a.sev === 'INFO',
+        meta: a.type + ' · ' + a.dev + ' · ' + a.at,
+        showAck: isOpen(a) && !viewer, showWaiting: isOpen(a) && viewer,
+        done: !isOpen(a), doneText: isOpen(a) ? '' : 'Đã xử lý bởi ' + a.by + ' · ' + a.doneAt,
+        ack: () => this.setState({ ackedNow: { ...ackedNow, [a.id]: true } }),
+      }));
+    const tabs = [['open', 'Đang mở', openCount], ['done', 'Đã xử lý', all.length - openCount], ['all', 'Tất cả', all.length]].map(([id, label, count]) => ({
+      label, count: String(count), on: tab === id,
+      bg: tab === id ? '#101A26' : 'transparent', fg: tab === id ? '#FFFFFF' : '#45525F',
+      pick: () => this.setState({ tab: id }),
+    }));
+
+    return {
+      role, username, rows, tabs, sev, dev, isAdmin: role === 'ADMIN',
+      openCount: String(openCount),
+      summary: openCount + ' cảnh báo đang mở · ' + all.length + ' trong 7 ngày qua',
+      shown: 'Hiển thị ' + rows.length + ' / ' + all.length + ' cảnh báo',
+      empty: rows.length === 0,
+      onSev: (e) => this.setState({ sev: e.target.value }),
+      onDev: (e) => this.setState({ dev: e.target.value }),
+    };
+  }
+}
+</script>
+</body>
+</html>
