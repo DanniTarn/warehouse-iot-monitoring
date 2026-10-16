@@ -1,0 +1,33 @@
+{
+  "name": "warehouse-iot-backend",
+  "version": "1.2.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "node --test tests/*.test.js",
+    "check": "node scripts/check.js",
+    "seed": "node scripts/seed.js",
+    "simulate": "node scripts/simulate.js",
+    "backfill:mongo": "node scripts/backfill-mongo.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.7",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.11.2",
+    "mqtt": "^5.16.0",
+    "pg": "^8.23.1",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
