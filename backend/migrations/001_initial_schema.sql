@@ -1,80 +1,86 @@
--- 001_initial_schema.sql
--- Khởi tạo CSDL 9 bảng cho Hệ thống giám sát Kho hàng
+-- 001_initial_schema_mysql.sql
+-- Khởi tạo CSDL 9 bảng cho MySQL
 
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100),
-    role VARCHAR(20) NOT NULL DEFAULT 'MONITOR', -- 'ADMIN' hoặc 'MONITOR'
+    role VARCHAR(20) NOT NULL DEFAULT 'MONITOR',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE nodes (
-    id VARCHAR(50) PRIMARY KEY, -- NODE_ENV_01, NODE_SEC_01
+CREATE TABLE IF NOT EXISTS nodes (
+    id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     location VARCHAR(100),
-    type VARCHAR(20) NOT NULL, -- 'ENVIRONMENT', 'SECURITY'
-    status VARCHAR(20) DEFAULT 'OFFLINE', -- 'ONLINE', 'OFFLINE'
-    last_heartbeat TIMESTAMP
-);
+    type VARCHAR(20) NOT NULL,
+    status VARCHAR(20) DEFAULT 'OFFLINE',
+    last_heartbeat TIMESTAMP NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE sensors (
-    id SERIAL PRIMARY KEY,
-    node_id VARCHAR(50) REFERENCES nodes(id) ON DELETE CASCADE,
-    sensor_type VARCHAR(50) NOT NULL, -- 'DHT22_TEMP', 'DHT22_HUM', 'MQ2', 'MC38', 'PIR'
-    unit VARCHAR(20)
-);
+CREATE TABLE IF NOT EXISTS sensors (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    node_id VARCHAR(50),
+    sensor_type VARCHAR(50) NOT NULL,
+    unit VARCHAR(20),
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE telemetry (
-    id BIGSERIAL PRIMARY KEY,
-    node_id VARCHAR(50) REFERENCES nodes(id) ON DELETE CASCADE,
-    temperature NUMERIC(5, 2),
-    humidity NUMERIC(5, 2),
-    smoke_level NUMERIC(7, 2),
+CREATE TABLE IF NOT EXISTS telemetry (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    node_id VARCHAR(50),
+    temperature DECIMAL(5, 2),
+    humidity DECIMAL(5, 2),
+    smoke_level DECIMAL(7, 2),
     door_open BOOLEAN,
     motion_detected BOOLEAN,
-    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE actuators (
-    id SERIAL PRIMARY KEY,
-    node_id VARCHAR(50) REFERENCES nodes(id) ON DELETE CASCADE,
-    actuator_type VARCHAR(50) NOT NULL, -- 'RELAY_FAN', 'BUZZER'
-    state BOOLEAN DEFAULT FALSE
-);
+CREATE TABLE IF NOT EXISTS actuators (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    node_id VARCHAR(50),
+    actuator_type VARCHAR(50) NOT NULL,
+    state BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE alert_rules (
-    id SERIAL PRIMARY KEY,
-    metric_name VARCHAR(50) NOT NULL, -- 'temperature', 'smoke_level'
-    threshold_value NUMERIC(7, 2) NOT NULL,
-    comparison_operator VARCHAR(5) NOT NULL, -- '>', '<', '>='
+CREATE TABLE IF NOT EXISTS alert_rules (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    metric_name VARCHAR(50) NOT NULL,
+    threshold_value DECIMAL(7, 2) NOT NULL,
+    comparison_operator VARCHAR(5) NOT NULL,
     is_active BOOLEAN DEFAULT TRUE
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE alerts (
-    id SERIAL PRIMARY KEY,
-    node_id VARCHAR(50) REFERENCES nodes(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS alerts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    node_id VARCHAR(50),
     alert_type VARCHAR(50) NOT NULL,
     message TEXT NOT NULL,
-    severity VARCHAR(20) NOT NULL, -- 'INFO', 'WARNING', 'CRITICAL'
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    severity VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (node_id) REFERENCES nodes(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE device_controls (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id),
-    actuator_id INT REFERENCES actuators(id),
+CREATE TABLE IF NOT EXISTS device_controls (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    actuator_id INT,
     command VARCHAR(50) NOT NULL,
-    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (actuator_id) REFERENCES actuators(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Bảng Audit Log ghi vết thao tác bảo mật và quản trị
-CREATE TABLE audit_logs (
-    id BIGSERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE SET NULL,
-    action VARCHAR(100) NOT NULL, -- 'USER_LOGIN', 'CHANGE_THRESHOLD', 'TOGGLE_RELAY'
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    action VARCHAR(100) NOT NULL,
     ip_address VARCHAR(45),
     details TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
