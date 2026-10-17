@@ -1,0 +1,57 @@
+:root {
+  /* surfaces */
+  --bg-page: #eef1f4;
+  --surface: #ffffff;
+  --surface-muted: #f6f8fa; /* table header */
+  --border: #d9dfe6; /* card border */
+  --divider: #e3e8ed; /* row separators */
+  --input-border: #a9b4c0;
+  --axis: #b9c2cc; /* chart baseline */
+  --grid: #e3e8ed; /* chart gridlines */
+
+  /* ink */
+  --ink: #101a26;
+  --ink-2: #45525f; /* secondary text */
+  --ink-3: #5e6b78; /* muted: codes, timestamps, axis labels */
+
+  /* sidebar */
+  --nav-bg: #101a26;
+  --nav-text: #c4ceda;
+  --nav-muted: #9fb0c3;
+  --nav-active-bg: #22344a;
+  --nav-divider: #2a3a4d;
+  --nav-chip-border: #4a5d73;
+
+  /* accent */
+  --accent: #1b5fcc;
+  --accent-hover: #134a9f;
+  --accent-soft: #f0f5fd; /* selected card background */
+
+  /* status: always pair with an icon or label, never colour alone */
+  --good-fg: #0b6b2e;
+  --good-bg: #e0f2e5;
+  --warn-fg: #6e4200;
+  --warn-bg: #ffefc7;
+  --warn-text: #8a5300; /* warning text on white */
+  --crit-fg: #8f1d17;
+  --crit-bg: #fbe4e2;
+  --crit-solid: #b3261e; /* alarm banner, danger button */
+  --info-fg: #134a9f;
+  --info-bg: #dce8fa;
+  --neutral-fg: #45525f;
+  --neutral-bg: #e6eaef;
+
+  /* chart series (validated for colour-vision deficiency on white) */
+  --series-temp: #eb6834;
+  --series-humidity: #2a78d6;
+  --series-smoke: #4a3aa7;
+
+  /* type */
+  --font-ui: 'Be Vietnam Pro', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* radii */
+  --r-card: 10px;
+  --r-control: 8px;
+  --r-badge: 6px;
+}
