@@ -3,19 +3,19 @@ const { HttpError } = require('../utils/http');
 const { audit } = require('./audit');
 const { commandById, deviceById } = require('./store');
 const { broadcast } = require('./realtime');
+const { commandPayload, ackDetails, ackStates } = require('../utils/firmwareProtocol');
+const { updateActuatorStates } = require('./actuators');
 const mqtt = require('./mqtt');
 
 const manualTypes = ['FAN_ON', 'FAN_OFF', 'FAN_AUTO', 'BUZZER_OFF'];
-const automaticTypes = ['FAN_ON', 'FAN_OFF', 'BUZZER_ON', 'LED_RED'];
+const automaticTypes = ['FAN_ON', 'FAN_OFF', 'BUZZER_ON'];
 
 function checkCommand(device, type, automatic) {
   if (!device || device.lifecycle_status !== 'ACTIVE') throw new HttpError(409, 'Thiết bị chưa kích hoạt hoặc đang bị khóa.');
   if (!(automatic ? automaticTypes : manualTypes).includes(type)) throw new HttpError(400, 'Loại lệnh không được hỗ trợ.');
   if (type.startsWith('FAN_') && !device.device_code.endsWith('_ENV')) throw new HttpError(400, 'Chỉ có thể điều khiển quạt ở Node môi trường.');
-  if ((type.startsWith('BUZZER_') || type.startsWith('LED_')) && !device.device_code.endsWith('_SEC')) {
-    throw new HttpError(400, 'Chỉ có thể điều khiển còi và đèn ở Node an ninh.');
-  }
-  if (!mqtt.isConnected()) throw new HttpError(503, 'MQTT Broker chưa kết nối.');
+  if (type.startsWith('BUZZER_') && !device.device_code.endsWith('_SEC')) throw new HttpError(400, 'Chỉ có thể điều khiển còi ở Node an ninh.');
+  if (type !== 'FAN_AUTO' && !mqtt.isConnected()) throw new HttpError(503, 'MQTT Broker chưa kết nối.');
 }
 
 async function commandResult(id) {
@@ -39,13 +39,14 @@ async function setCommandStatus(id, status, reason = null) {
 
 async function deliver(command, code) {
   try {
-    await mqtt.publish(code, {
-      command_id: command.command_id,
-      command: command.command_type,
-      command_type: command.command_type,
-      params: command.parameters || {},
-      parameters: command.parameters || {}
-    });
+    if (command.command_type === 'FAN_AUTO') {
+      await pool.query('UPDATE device_configs SET fan_mode=$2,updated_at=NOW() WHERE device_id=$1', [command.device_id, 'AUTO']);
+      await setCommandStatus(command.command_id, 'ACKNOWLEDGED');
+      return;
+    }
+    const payload = commandPayload(command);
+    if (!payload) throw new Error('Firmware không hỗ trợ lệnh này.');
+    await mqtt.publish(code, payload);
     await setCommandStatus(command.command_id, 'SENT');
   } catch (error) {
     await setCommandStatus(command.command_id, 'FAILED', error.message);
@@ -54,9 +55,7 @@ async function deliver(command, code) {
 }
 
 async function createCommand({ deviceId, type, parameters = null, userId = null, ip = null, automatic = false }) {
-  if (parameters !== null && (typeof parameters !== 'object' || Array.isArray(parameters))) {
-    throw new HttpError(400, 'Tham số lệnh không hợp lệ.');
-  }
+  if (parameters !== null && (typeof parameters !== 'object' || Array.isArray(parameters))) throw new HttpError(400, 'Tham số lệnh không hợp lệ.');
   const device = await deviceById(deviceId);
   checkCommand(device, type, automatic);
   if (automatic) {
@@ -73,9 +72,7 @@ async function createCommand({ deviceId, type, parameters = null, userId = null,
        VALUES($1,$2,$3,$4) RETURNING command_id`,
       [deviceId, userId, type, parameters ? JSON.stringify(parameters) : null]
     );
-    if (!automatic) {
-      await audit('MANUAL_CONTROL', userId, { device_id: deviceId, command_type: type, command_id: result.rows[0].command_id }, ip, db);
-    }
+    if (!automatic) await audit('MANUAL_CONTROL', userId, { device_id: deviceId, command_type: type, command_id: result.rows[0].command_id }, ip, db);
     return result.rows[0].command_id;
   });
   const command = await commandById(saved);
@@ -85,48 +82,55 @@ async function createCommand({ deviceId, type, parameters = null, userId = null,
 }
 
 async function processAck(code, payload) {
-  const commandId = Number(payload.command_id);
-  if (!Number.isSafeInteger(commandId) || commandId < 1) return;
-  const result = await pool.query(
-    `SELECT c.command_id FROM device_controls c JOIN nodes n ON n.device_id=c.device_id
-     WHERE c.command_id=$1 AND n.device_code=$2 AND c.status IN ('PENDING','SENT')`,
-    [commandId, code]
+  const details = ackDetails(payload.status);
+  if (!details) return;
+  const deviceResult = await pool.query(
+    `SELECT device_id FROM nodes WHERE device_code=$1 AND lifecycle_status IN ('ACTIVE','OFFLINE')`,
+    [code]
   );
+  if (!deviceResult.rowCount) return;
+  const deviceId = deviceResult.rows[0].device_id;
+  if (details.kind) {
+    const compatible = code.endsWith('_ENV') ? details.kind === 'FAN' : code.endsWith('_SEC') && details.kind === 'ALARM';
+    if (!compatible) return;
+    await updateActuatorStates(deviceId, code, ackStates(code, payload.status));
+  }
+
+  let commandId = null;
+  const rawId = payload.command_id;
+  if (rawId !== undefined && rawId !== null) {
+    const id = Number(rawId);
+    if (!Number.isSafeInteger(id) || id < 1) return;
+    const match = await pool.query(
+      `SELECT command_id,command_type FROM device_controls
+       WHERE command_id=$1 AND device_id=$2 AND status IN ('PENDING','SENT')`,
+      [id, deviceId]
+    );
+    if (!match.rowCount) return;
+    if (details.type && match.rows[0].command_type !== details.type) return;
+    commandId = id;
+  } else if (details.type) {
+    const candidates = await pool.query(
+      `SELECT command_id FROM device_controls WHERE device_id=$1 AND command_type=$2
+       AND status IN ('PENDING','SENT') AND sent_at > NOW() - INTERVAL '10 seconds'
+       ORDER BY sent_at DESC,command_id DESC LIMIT 2`,
+      [deviceId, details.type]
+    );
+    if (candidates.rowCount !== 1) return;
+    commandId = candidates.rows[0].command_id;
+  }
+  if (commandId === null) return;
+  const changed = await setCommandStatus(commandId, details.successful ? 'ACKNOWLEDGED' : 'FAILED', details.successful ? null : 'Thiết bị báo lệnh không thành công.');
+  if (!changed || !details.successful) return;
+  const result = await pool.query('SELECT command_type,user_id FROM device_controls WHERE command_id=$1', [commandId]);
   if (!result.rowCount) return;
-  const response = String(payload.status || '').toUpperCase();
-  if (!['OK', 'ACK', 'ACKED', 'ACKNOWLEDGED', 'SUCCESS', 'DONE', 'FAILED', 'ERROR'].includes(response)) return;
-  const ok = ['OK', 'ACK', 'ACKED', 'ACKNOWLEDGED', 'SUCCESS', 'DONE'].includes(response);
-  await setCommandStatus(commandId, ok ? 'ACKNOWLEDGED' : 'FAILED', ok ? null : 'Thiết bị báo thực hiện lệnh không thành công.');
-  if (ok) {
-    const row = await pool.query('SELECT device_id,command_type FROM device_controls WHERE command_id=$1', [commandId]);
-    const command = row.rows[0];
-    const states = { FAN_ON: ['FAN', true], FAN_OFF: ['FAN', false], BUZZER_ON: ['BUZZER', true], BUZZER_OFF: ['BUZZER', false], LED_RED: ['LED_RED', true] };
-    const state = states[command.command_type];
-    if (state) {
-      await pool.query(
-        'UPDATE actuators SET state=$3,updated_at=NOW() WHERE device_id=$1 AND actuator_type=$2',
-        [command.device_id, state[0], state[1]]
-      );
-    }
-    if (['FAN_ON', 'FAN_OFF', 'FAN_AUTO'].includes(command.command_type) && row.rows[0]) {
-      const source = await pool.query('SELECT user_id FROM device_controls WHERE command_id=$1', [commandId]);
-      if (source.rows[0].user_id !== null) {
-        const mode = command.command_type === 'FAN_AUTO' ? 'AUTO' : command.command_type === 'FAN_ON' ? 'ON' : 'OFF';
-        await pool.query('UPDATE device_configs SET fan_mode=$2,updated_at=NOW() WHERE device_id=$1', [command.device_id, mode]);
-        if (mode === 'AUTO') {
-          const sample = await pool.query(
-            `SELECT t.humidity, c.humidity_threshold FROM telemetry t JOIN device_configs c ON c.device_id=t.device_id
-             WHERE t.device_id=$1 ORDER BY t.recorded_at DESC,t.telemetry_id DESC LIMIT 1`,
-            [command.device_id]
-          );
-          if (sample.rowCount && sample.rows[0].humidity != null && sample.rows[0].humidity_threshold != null) {
-            const nextType = sample.rows[0].humidity > sample.rows[0].humidity_threshold ? 'FAN_ON' : 'FAN_OFF';
-            void createCommand({ deviceId: command.device_id, type: nextType, automatic: true })
-              .catch(error => console.error('Không áp dụng được chế độ quạt tự động:', error.message));
-          }
-        }
-      }
-    }
+  const { command_type: type, user_id: userId } = result.rows[0];
+  if (userId !== null && ['FAN_ON', 'FAN_OFF'].includes(type)) {
+    await pool.query('UPDATE device_configs SET fan_mode=$2,updated_at=NOW() WHERE device_id=$1', [deviceId, type === 'FAN_ON' ? 'ON' : 'OFF']);
+  }
+  if (!details.kind) {
+    const states = { FAN_ON: [['FAN', true]], FAN_OFF: [['FAN', false]], BUZZER_ON: [['BUZZER', true], ['LED_RED', true]], BUZZER_OFF: [['BUZZER', false], ['LED_RED', false]] };
+    if (states[type]) await updateActuatorStates(deviceId, code, states[type]);
   }
 }
 

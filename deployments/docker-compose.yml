@@ -69,8 +69,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET chưa được cấu hình}
       JWT_EXPIRES_IN: 24h
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
-      MQTT_BROKER_URL: mqtt://mosquitto:1883
+      MQTT_BROKER_URL: ${MQTT_BROKER_URL:-mqtt://mosquitto:1883}
       MQTT_TOPIC_PREFIX: khohang
+      SYNC_THRESHOLDS_ON_HEARTBEAT: ${SYNC_THRESHOLDS_ON_HEARTBEAT:-false}
       OFFLINE_TIMEOUT_SECONDS: 90
       COMMAND_TIMEOUT_SECONDS: 10
       NIGHT_TIMEZONE: Asia/Ho_Chi_Minh

@@ -81,8 +81,8 @@ test('Khói cao kích hoạt cảnh báo và hai lệnh tới Node 2', () => {
     { humidity: 60, smoke_gas_level: 450 }, { humidity: 60, smoke_gas_level: 150 }, false);
   assert.deepEqual(plan.alerts.map(a => a.type), ['SMOKE_CRITICAL']);
   assert.deepEqual(plan.commands, [
-    { code: 'NODE2_SEC', type: 'BUZZER_ON' },
-    { code: 'NODE2_SEC', type: 'LED_RED' }
+    { code: 'NODE1_ENV', type: 'FAN_OFF' },
+    { code: 'NODE2_SEC', type: 'BUZZER_ON' }
   ]);
 });
 
