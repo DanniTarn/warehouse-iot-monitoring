@@ -186,3 +186,25 @@ Lệnh backfill chủ động đưa toàn bộ telemetry/cảnh báo PostgreSQL 
 Cấu hình Docker lưu dữ liệu MongoDB trong volume `mongodata`, chỉ công bố cổng 27017 trên loopback của máy chủ và yêu cầu username/password. Không chia sẻ file `.env` hoặc commit mật khẩu thật.
 
 Tài liệu báo cáo tổng thể có ERD dữ liệu quan hệ, còn Backend Người 1 ban đầu sử dụng Mongoose cho telemetry và alerts. Bản tích hợp này giữ ERD PostgreSQL để tương thích hợp đồng nhóm, đồng thời giữ MongoDB làm kho lịch sử đúng với Backend gốc. Nhóm cần xác nhận và cập nhật bản báo cáo kiến trúc cuối cùng theo mô hình hai database này.
+
+## 9. Tương thích firmware mới ngày 08/11/2026
+
+Backend hỗ trợ trực tiếp JSON hiện tại của ESP32: `fan: on/off`, `alarm: on/off`, `FAN_ON_ACK`, `ALARM_OFF_ACK`, `fan_state`, `alarm_state` và ba ngưỡng `threshold_t`, `threshold_h`, `threshold_gas`. PostgreSQL giữ dữ liệu nghiệp vụ; MongoDB tiếp tục lưu lịch sử qua outbox.
+
+Đọc `FIRMWARE_INTEGRATION.md` trước khi kết nối ESP32 thật. Cần thống nhất MQTT Broker, bổ sung `command_id` vào ACK và xử lý chế độ quạt thủ công trong firmware. Không sử dụng các giá trị khí gas thô như một phép đo ppm đã hiệu chuẩn.
+
+Sau khi lấy bản cập nhật, không cần xóa dữ liệu database cũ. Backend sẽ chạy thêm migration `003_firmware_threshold.sql` khi khởi động. Nếu đang chạy Docker:
+
+```powershell
+cd deployments
+docker compose --env-file .env up -d --build
+```
+
+Kiểm thử:
+
+```powershell
+cd backend
+npm ci
+npm run check
+npm test
+```
