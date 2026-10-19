@@ -26,9 +26,9 @@ async function commandResult(id) {
 
 async function setCommandStatus(id, status, reason = null) {
   const result = await pool.query(
-    `UPDATE device_controls SET status=$2,
-       published_at=CASE WHEN $2='SENT' THEN NOW() ELSE published_at END,
-       acknowledged_at=CASE WHEN $2='ACKNOWLEDGED' THEN NOW() ELSE acknowledged_at END,
+    `UPDATE device_controls SET status=$2::text,
+       published_at=CASE WHEN $2::text='SENT' THEN NOW() ELSE published_at END,
+       acknowledged_at=CASE WHEN $2::text='ACKNOWLEDGED' THEN NOW() ELSE acknowledged_at END,
        failure_reason=$3
      WHERE command_id=$1 AND status IN ('PENDING','SENT') RETURNING command_id`,
     [id, status, reason]
