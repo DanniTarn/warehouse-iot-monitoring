@@ -87,11 +87,11 @@ router.patch('/:id/lifecycle', authorizeRoles('ADMIN'), async (req, res) => {
     if (before === 'DECOMMISSIONED') throw new HttpError(409, 'Thiết bị đã thu hồi không thể kích hoạt lại.');
     if (before === 'REGISTERED') throw new HttpError(409, 'Hãy kích hoạt thiết bị trước khi thay đổi vòng đời.');
     await db.query(
-      `UPDATE nodes SET lifecycle_status=$2,
-       auth_token_hash=CASE WHEN $2='DECOMMISSIONED' THEN NULL ELSE auth_token_hash END,
-       auth_token_suffix=CASE WHEN $2='DECOMMISSIONED' THEN NULL ELSE auth_token_suffix END,
-       activated_at=CASE WHEN $2='ACTIVE' THEN NOW() ELSE activated_at END,
-       last_heartbeat=CASE WHEN $2='ACTIVE' THEN NULL ELSE last_heartbeat END
+      `UPDATE nodes SET lifecycle_status=$2::text,
+       auth_token_hash=CASE WHEN $2::text='DECOMMISSIONED' THEN NULL ELSE auth_token_hash END,
+       auth_token_suffix=CASE WHEN $2::text='DECOMMISSIONED' THEN NULL ELSE auth_token_suffix END,
+       activated_at=CASE WHEN $2::text='ACTIVE' THEN NOW() ELSE activated_at END,
+       last_heartbeat=CASE WHEN $2::text='ACTIVE' THEN NULL ELSE last_heartbeat END
        WHERE device_id=$1`,
       [id, status]
     );
