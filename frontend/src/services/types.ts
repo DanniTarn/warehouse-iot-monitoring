@@ -1,10 +1,12 @@
 export type Role = 'ADMIN' | 'OPERATOR' | 'VIEWER'
 export type LifecycleStatus = 'REGISTERED' | 'ACTIVE' | 'OFFLINE' | 'MAINTENANCE' | 'DECOMMISSIONED'
-export type CommandType = 'FAN_ON' | 'FAN_OFF' | 'FAN_AUTO' | 'BUZZER_OFF' // FAN_AUTO: proposed, §11
+export type CommandType = 'FAN_ON' | 'FAN_OFF' | 'FAN_AUTO' | 'BUZZER_ON' | 'BUZZER_OFF'
 export type CommandStatus = 'PENDING' | 'SENT' | 'ACKNOWLEDGED' | 'FAILED'
 export type Severity = 'INFO' | 'WARNING' | 'CRITICAL'
+export type FanMode = 'AUTO' | 'ON' | 'OFF'
 export type AlertType =
   | 'SMOKE_CRITICAL'
+  | 'TEMPERATURE_CRITICAL'
   | 'DOOR_BREACH'
   | 'MOTION_INTRUSION'
   | 'HUMIDITY_HIGH'
@@ -46,8 +48,10 @@ export interface DeviceConfig {
   device_id: number
   humidity_threshold: number | null // %
   smoke_gas_threshold: number | null // unit unconfirmed, §11
+  temperature_threshold: number // °C
   telemetry_interval: number // seconds
   night_mode_enabled: boolean
+  fan_mode: FanMode
   updated_at: string
 }
 export interface Telemetry {
