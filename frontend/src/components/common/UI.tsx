@@ -79,7 +79,7 @@ export function DeferredButton({
 }) {
   const [show, setShow] = useState(false)
   return (
-    <span className={styles.deferred}>
+    <span className={styles.action}>
       <Button {...props} onClick={() => setShow(true)}>
         {children}
       </Button>
@@ -88,6 +88,47 @@ export function DeferredButton({
           Chức năng này được triển khai ở mốc {milestone}. Chưa gửi hoặc lưu thay đổi.
         </small>
       )}
+    </span>
+  )
+}
+export function ActionButton({
+  action,
+  confirm,
+  success,
+  variant,
+  disabled,
+  children,
+}: {
+  action: () => Promise<unknown>
+  confirm?: string
+  success?: string
+  variant?: 'primary' | 'danger'
+  disabled?: boolean
+  children: ReactNode
+}) {
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState('')
+  const [done, setDone] = useState('')
+  async function run() {
+    if (confirm && !window.confirm(confirm)) return
+    setPending(true)
+    setError('')
+    setDone('')
+    try {
+      await action()
+      if (success) setDone(success)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không thực hiện được thao tác.')
+    } finally {
+      setPending(false)
+    }
+  }
+  return (
+    <span className={styles.action}>
+      <Button variant={variant} disabled={disabled || pending} aria-busy={pending} onClick={run}>
+        {children}
+      </Button>
+      {error ? <Notice error>{error}</Notice> : done ? <Notice>{done}</Notice> : null}
     </span>
   )
 }
@@ -192,6 +233,13 @@ export function Notice({ children, error = false }: { children: ReactNode; error
     >
       {children}
     </div>
+  )
+}
+export function SecretToken({ token }: { token: string }) {
+  return (
+    <code className={styles.secret} aria-label="Token xác thực">
+      {token}
+    </code>
   )
 }
 export function BackLink() {
