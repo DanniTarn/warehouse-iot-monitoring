@@ -38,6 +38,11 @@ export default function DeviceDetail() {
   const config = data.configs.find((c) => c.device_id === device.device_id)
   const reading = data.telemetry.find((row) => row.device_id === device.device_id)
   const environment = kind === 'environment'
+  const humidityThreshold = config?.humidity_threshold ?? MONITORING.humidityThreshold
+  const temperatureThreshold = config?.temperature_threshold ?? 50
+  const humidityHigh = reading?.humidity != null && reading.humidity > humidityThreshold
+  const temperatureHigh = reading?.temperature != null && reading.temperature > temperatureThreshold
+  const buzzer = data.presentation.buzzer_sounding
   const commands = data.commands.filter((command) => command.device_id === device.device_id)
   const sensors: [string, string][] = environment
     ? [
@@ -128,14 +133,15 @@ export default function DeviceDetail() {
                 label="Nhiệt độ"
                 value={number(reading.temperature)}
                 unit="°C"
-                status="Bình thường"
+                status={temperatureHigh ? `Vượt ngưỡng ${temperatureThreshold} °C` : 'Bình thường'}
+                tone={temperatureHigh ? 'warning' : 'good'}
               />
               <Stat
                 label="Độ ẩm"
                 value={number(reading.humidity)}
                 unit="%"
-                status="Vượt ngưỡng 65 %"
-                tone="warning"
+                status={humidityHigh ? `Vượt ngưỡng ${humidityThreshold} %` : 'Bình thường'}
+                tone={humidityHigh ? 'warning' : 'good'}
               />
               <Stat
                 label="Khói / khí gas"
@@ -160,11 +166,16 @@ export default function DeviceDetail() {
               />
               <Stat
                 label="Còi báo động"
-                value="Đang kêu"
+                value={buzzer ? 'Đang kêu' : 'Tắt'}
                 status="Báo động tại chỗ"
-                tone="critical"
+                tone={buzzer ? 'critical' : 'muted'}
               />
-              <Stat label="Đèn LED" value="Đỏ" status="Nhấp nháy" tone="critical" />
+              <Stat
+                label="Đèn LED"
+                value={data.presentation.led}
+                status="Đèn trạng thái"
+                tone={data.presentation.led === 'Tắt' ? 'muted' : 'critical'}
+              />
             </section>
           )}
           {reading &&
@@ -175,10 +186,17 @@ export default function DeviceDetail() {
             ) : (
               <Card title="Điều khiển còi báo động">
                 <div className="row between">
-                  <p>Cửa kho bị mở ngoài giờ giới nghiêm</p>
-                  <Badge tone="critical">Đang kêu</Badge>
+                  <p>
+                    {reading.door_status
+                      ? 'Cửa kho bị mở ngoài giờ giới nghiêm'
+                      : 'Còi báo động tại chỗ'}
+                  </p>
+                  <Badge tone={buzzer ? 'critical' : 'neutral'}>{buzzer ? 'Đang kêu' : 'Tắt'}</Badge>
                 </div>
-                <DeferredButton milestone="24/10" disabled={role === 'VIEWER'}>
+                <DeferredButton
+                  milestone="24/10"
+                  disabled={role === 'VIEWER' || !buzzer}
+                >
                   Tắt còi
                 </DeferredButton>
                 <Link to="/alerts" className={ui.link}>
@@ -201,7 +219,7 @@ export default function DeviceDetail() {
                 headers={['Thời gian', 'Cảm biến', 'Sự kiện', 'Cảnh báo']}
               >
                 {data.presentation.security_events.map((event) => (
-                  <tr key={event.recorded_at}>
+                  <tr key={`${event.recorded_at}-${event.sensor}`}>
                     <td className="mono">{dateTime(event.recorded_at, true)}</td>
                     <td className="mono">{event.sensor}</td>
                     <td>{event.description}</td>

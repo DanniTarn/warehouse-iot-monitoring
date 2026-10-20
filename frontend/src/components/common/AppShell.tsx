@@ -1,5 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { dataSource } from '../../services/api'
+import { connectRealtime } from '../../services/realtime'
 import { useAuth } from '../../store/auth'
 import { useDashboard } from '../../store/dashboard'
 import { Icon, type IconName } from './Icon'
@@ -21,12 +23,27 @@ export function Brand({ subtitle = true }: { subtitle?: boolean }) {
 }
 export function AppShell() {
   const { user, token, logout } = useAuth()
-  const { data, loading, error, load, reset } = useDashboard()
+  const { data, loading, error, load, reset, applyEvent, setConnection } = useDashboard()
   const location = useLocation()
+  const connected = useRef(false)
   useEffect(() => {
     if (token) void load(token)
     return reset
   }, [token, load, reset])
+  useEffect(() => {
+    if (dataSource !== 'api' || !token) return
+    connected.current = false
+    setConnection('reconnecting')
+    return connectRealtime(token, {
+      onEvent: applyEvent,
+      onState: (state) => {
+        setConnection(state)
+        if (state !== 'live') return
+        if (connected.current) void load(token)
+        connected.current = true
+      },
+    })
+  }, [token, load, applyEvent, setConnection])
   useEffect(() => {
     const titles: Record<string, string> = {
       '/': 'Tổng quan',
@@ -92,7 +109,9 @@ export function AppShell() {
           <Outlet />
         )}
         <footer className={styles.preview}>
-          Bản giao diện 15/10 · Dữ liệu mô phỏng, chưa kết nối thiết bị thực.
+          {dataSource === 'api'
+            ? 'Dữ liệu trực tiếp từ hệ thống đang chạy, không phải dữ liệu mô phỏng.'
+            : 'Bản giao diện 15/10 · Dữ liệu mô phỏng, chưa kết nối thiết bị thực.'}
         </footer>
       </main>
     </div>
