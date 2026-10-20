@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { useAuth } from '../store/auth'
 import { useDashboard } from '../store/dashboard'
+import { useActions } from '../store/actions'
 import { dateTime } from '../services/format'
-import { Badge, Card, DeferredButton, Field, PageHeader } from '../components/common/UI'
+import { ActionButton, Badge, Card, Field, PageHeader } from '../components/common/UI'
 import { Icon } from '../components/common/Icon'
 import ui from '../components/common/UI.module.css'
 import styles from './Pages.module.css'
 export default function Alerts() {
   const data = useDashboard((s) => s.data)!
   const viewer = useAuth((s) => s.user?.role === 'VIEWER')
+  const actions = useActions()
   const [tab, setTab] = useState('open')
   const [severity, setSeverity] = useState('')
   const [device, setDevice] = useState('')
@@ -73,7 +75,12 @@ export default function Alerts() {
               ) : viewer ? (
                 <span className="muted small">Chưa xử lý</span>
               ) : (
-                <DeferredButton milestone="24/10">Xác nhận đã xử lý</DeferredButton>
+                <ActionButton
+                  action={() => actions.acknowledgeAlert(alert.alert_id)}
+                  success="Đã xác nhận cảnh báo."
+                >
+                  Xác nhận đã xử lý
+                </ActionButton>
               )}
             </div>
           </article>
