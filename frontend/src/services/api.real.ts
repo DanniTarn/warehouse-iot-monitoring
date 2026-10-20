@@ -91,4 +91,55 @@ export const realApi: ApiClient = {
     }
     return data
   },
+  acknowledgeAlert(token, alertId) {
+    return request<Alert>(`/alerts/${alertId}/acknowledge`, { token, method: 'POST' })
+  },
+  sendCommand(token, deviceId, type) {
+    return request<DeviceCommand>(`/commands/device/${deviceId}`, {
+      token,
+      method: 'POST',
+      body: { command_type: type },
+    })
+  },
+  async registerDevice(token, input) {
+    const created = await request<{ device: Device; auth_token: string }>('/devices', {
+      token,
+      method: 'POST',
+      body: input,
+    })
+    const config = await request<DeviceConfig>(`/devices/${created.device.device_id}/config`, {
+      token,
+    })
+    return { ...created, config }
+  },
+  activateDevice(token, deviceId) {
+    return request<Device>(`/devices/${deviceId}/activate`, { token, method: 'POST' })
+  },
+  setLifecycle(token, deviceId, status) {
+    return request<Device>(`/devices/${deviceId}/lifecycle`, {
+      token,
+      method: 'PATCH',
+      body: { status },
+    })
+  },
+  async rotateDeviceToken(token, deviceId) {
+    const result = await request<{ auth_token: string }>(`/devices/${deviceId}/token`, {
+      token,
+      method: 'POST',
+    })
+    return result.auth_token
+  },
+  updateConfig(token, deviceId, patch) {
+    return request<DeviceConfig>(`/devices/${deviceId}/config`, {
+      token,
+      method: 'PUT',
+      body: patch,
+    })
+  },
+  createUser(token, input) {
+    return request<User>('/users', { token, method: 'POST', body: input })
+  },
+  updateUser(token, userId, patch) {
+    return request<User>(`/users/${userId}`, { token, method: 'PATCH', body: patch })
+  },
 }

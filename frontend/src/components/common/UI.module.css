@@ -145,15 +145,27 @@
   background: var(--crit-bg);
   color: var(--crit-fg);
 }
-.deferred {
+.action {
   display: inline-flex;
   flex-direction: column;
   gap: 8px;
   align-items: flex-start;
   max-width: 100%;
 }
-.deferred > small {
+.action > div {
   max-width: 300px;
+}
+.secret {
+  display: block;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--divider);
+  border-radius: var(--r-control);
+  background: var(--surface);
+  color: var(--ink);
+  font: 600 13px/1.5 var(--font-mono);
+  overflow-wrap: anywhere;
+  user-select: all;
 }
 .segmented {
   display: flex;

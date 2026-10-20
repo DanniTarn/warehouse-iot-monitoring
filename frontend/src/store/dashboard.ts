@@ -2,9 +2,16 @@ import { create } from 'zustand'
 import { api, dataSource, type DashboardData } from '../services/api'
 import { derivePresentation } from '../services/dashboardView'
 import type { RealtimeEvent, RealtimeState } from '../services/realtime'
+import type { Device, DeviceCommand, DeviceConfig, User } from '../services/types'
 
 const TELEMETRY_LIMIT = 1500
 const initialConnection: RealtimeState = dataSource === 'api' ? 'reconnecting' : 'live'
+
+export type DashboardChange =
+  | RealtimeEvent
+  | { type: 'device_saved'; data: Device }
+  | { type: 'config_saved'; data: DeviceConfig }
+  | { type: 'user_saved'; data: User }
 
 interface DashboardState {
   data: DashboardData | null
@@ -12,13 +19,27 @@ interface DashboardState {
   error: string
   connection: RealtimeState
   load: (token: string) => Promise<void>
-  applyEvent: (event: RealtimeEvent) => void
+  applyEvent: (change: DashboardChange) => void
   setConnection: (connection: RealtimeState) => void
   reset: () => void
 }
 
 function withPresentation(data: DashboardData): DashboardData {
   return { ...data, presentation: derivePresentation(data) }
+}
+
+function upsert<T>(items: T[], saved: T, key: (item: T) => number) {
+  return items.some((item) => key(item) === key(saved))
+    ? items.map((item) => (key(item) === key(saved) ? saved : item))
+    : [...items, saved]
+}
+
+function fanModeOf(command: DeviceCommand): DeviceConfig['fan_mode'] | null {
+  if (command.status !== 'ACKNOWLEDGED') return null
+  if (command.command_type === 'FAN_ON') return 'ON'
+  if (command.command_type === 'FAN_OFF') return 'OFF'
+  if (command.command_type === 'FAN_AUTO') return 'AUTO'
+  return null
 }
 
 let request = 0
@@ -41,13 +62,13 @@ export const useDashboard = create<DashboardState>((set) => ({
         })
     }
   },
-  applyEvent(event) {
+  applyEvent(change) {
     set((state) => {
       const data = state.data
       if (!data) return state
-      switch (event.type) {
+      switch (change.type) {
         case 'telemetry': {
-          const row = event.data
+          const row = change.data
           if (!row) return state
           const telemetry = [
             row,
@@ -65,7 +86,7 @@ export const useDashboard = create<DashboardState>((set) => ({
           }
         }
         case 'device_status': {
-          const status = event.data
+          const status = change.data
           if (!status) return state
           return {
             data: {
@@ -84,7 +105,7 @@ export const useDashboard = create<DashboardState>((set) => ({
           }
         }
         case 'alert_created': {
-          const alert = event.data
+          const alert = change.data
           if (!alert) return state
           return {
             data: withPresentation({
@@ -97,7 +118,7 @@ export const useDashboard = create<DashboardState>((set) => ({
           }
         }
         case 'alert_updated': {
-          const alert = event.data
+          const alert = change.data
           if (!alert) return state
           return {
             data: withPresentation({
@@ -109,20 +130,45 @@ export const useDashboard = create<DashboardState>((set) => ({
           }
         }
         case 'command_status': {
-          const command = event.data
+          const command = change.data
           if (!command) return state
           const known = data.commands.some((item) => item.command_id === command.command_id)
+          const commands = known
+            ? data.commands.map((item) =>
+                item.command_id === command.command_id ? command : item,
+              )
+            : [command, ...data.commands]
+          const fanMode = fanModeOf(command)
+          const configs = fanMode
+            ? data.configs.map((config) =>
+                config.device_id === command.device_id
+                  ? { ...config, fan_mode: fanMode }
+                  : config,
+              )
+            : data.configs
+          return { data: withPresentation({ ...data, commands, configs }) }
+        }
+        case 'device_saved':
           return {
             data: withPresentation({
               ...data,
-              commands: known
-                ? data.commands.map((item) =>
-                    item.command_id === command.command_id ? command : item,
-                  )
-                : [command, ...data.commands],
+              devices: upsert(data.devices, change.data, (device) => device.device_id),
             }),
           }
-        }
+        case 'config_saved':
+          return {
+            data: withPresentation({
+              ...data,
+              configs: upsert(data.configs, change.data, (config) => config.device_id),
+            }),
+          }
+        case 'user_saved':
+          return {
+            data: {
+              ...data,
+              users: upsert(data.users, change.data, (user) => user.user_id),
+            },
+          }
       }
     })
   },
