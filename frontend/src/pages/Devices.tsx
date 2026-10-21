@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useDashboard } from '../store/dashboard'
+import { useActions } from '../store/actions'
 import { LIFECYCLES } from '../services/config'
 import type { LifecycleStatus } from '../services/types'
 import {
+  ActionButton,
   ActionLink,
   Badge,
   Connection,
-  DeferredButton,
   EmptyRow,
   Field,
   Heartbeat,
@@ -19,6 +20,7 @@ import styles from './Pages.module.css'
 export default function Devices() {
   const data = useDashboard((s) => s.data)!
   const admin = useAuth((s) => s.user?.role === 'ADMIN')
+  const actions = useActions()
   const [query, setQuery] = useState('')
   const [lifecycle, setLifecycle] = useState<LifecycleStatus | ''>('')
   const [warehouse, setWarehouse] = useState('')
@@ -120,7 +122,12 @@ export default function Devices() {
             <td>{device.assigned_username || '—'}</td>
             <td>
               {admin && device.lifecycle_status === 'REGISTERED' ? (
-                <DeferredButton>Kích hoạt</DeferredButton>
+                <ActionButton
+                  action={() => actions.activateDevice(device.device_id)}
+                  success="Đã kích hoạt thiết bị."
+                >
+                  Kích hoạt
+                </ActionButton>
               ) : (
                 <Link to={`/devices/${device.device_id}`}>Chi tiết</Link>
               )}

@@ -1,18 +1,21 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useDashboard } from '../store/dashboard'
+import { useActions } from '../store/actions'
 import { getDeviceKind, MONITORING } from '../services/config'
 import { dateTime, number } from '../services/format'
 import {
+  ActionButton,
   BackLink,
   Badge,
   Card,
   Connection,
-  DeferredButton,
   Heartbeat,
   InfoList,
   Notice,
   PageHeader,
+  SecretToken,
   Stat,
   Table,
 } from '../components/common/UI'
@@ -25,6 +28,8 @@ export default function DeviceDetail() {
   const { deviceId } = useParams()
   const data = useDashboard((s) => s.data)!
   const role = useAuth((s) => s.user?.role)
+  const actions = useActions()
+  const [issuedToken, setIssuedToken] = useState('')
   const device = data.devices.find((d) => String(d.device_id) === deviceId)
   if (!device)
     return (
@@ -76,18 +81,37 @@ export default function DeviceDetail() {
           {role === 'ADMIN' && (
             <div className="row">
               {device.lifecycle_status === 'REGISTERED' ? (
-                <DeferredButton>Kích hoạt</DeferredButton>
+                <ActionButton
+                  action={() => actions.activateDevice(device.device_id)}
+                  success="Đã kích hoạt thiết bị."
+                >
+                  Kích hoạt
+                </ActionButton>
+              ) : device.lifecycle_status === 'MAINTENANCE' ? (
+                <ActionButton
+                  action={() => actions.setLifecycle(device.device_id, 'ACTIVE')}
+                  success="Đã kích hoạt lại thiết bị."
+                >
+                  Kích hoạt lại
+                </ActionButton>
               ) : (
-                <DeferredButton disabled={device.lifecycle_status === 'DECOMMISSIONED'}>
+                <ActionButton
+                  disabled={device.lifecycle_status === 'DECOMMISSIONED'}
+                  action={() => actions.setLifecycle(device.device_id, 'MAINTENANCE')}
+                  success="Đã chuyển thiết bị sang bảo trì."
+                >
                   Chuyển bảo trì
-                </DeferredButton>
+                </ActionButton>
               )}
-              <DeferredButton
+              <ActionButton
                 variant="danger"
                 disabled={device.lifecycle_status === 'DECOMMISSIONED'}
+                confirm="Thu hồi thiết bị sẽ xóa token và chặn kết nối. Tiếp tục?"
+                action={() => actions.setLifecycle(device.device_id, 'DECOMMISSIONED')}
+                success="Đã thu hồi thiết bị."
               >
                 Thu hồi thiết bị
-              </DeferredButton>
+              </ActionButton>
             </div>
           )}
         </PageHeader>
@@ -111,9 +135,23 @@ export default function DeviceDetail() {
               ]}
             />
             {role === 'ADMIN' && (
-              <DeferredButton disabled={device.lifecycle_status === 'DECOMMISSIONED'}>
-                Cấp lại token
-              </DeferredButton>
+              <>
+                <ActionButton
+                  disabled={device.lifecycle_status === 'DECOMMISSIONED'}
+                  confirm="Cấp lại token sẽ khiến thiết bị dùng token cũ mất kết nối. Tiếp tục?"
+                  action={async () =>
+                    setIssuedToken(await actions.rotateDeviceToken(device.device_id))
+                  }
+                >
+                  Cấp lại token
+                </ActionButton>
+                {issuedToken && (
+                  <Notice>
+                    Token mới chỉ hiển thị một lần. Sao chép ngay và không đưa lên GitHub.
+                    <SecretToken token={issuedToken} />
+                  </Notice>
+                )}
+              </>
             )}
           </Card>
           <Card title="Cảm biến và cơ cấu chấp hành">
@@ -181,7 +219,7 @@ export default function DeviceDetail() {
           {reading &&
             (environment ? (
               <Card title="Điều khiển quạt">
-                <FanControl detailed />
+                <FanControl detailed deviceId={device.device_id} />
               </Card>
             ) : (
               <Card title="Điều khiển còi báo động">
@@ -193,12 +231,13 @@ export default function DeviceDetail() {
                   </p>
                   <Badge tone={buzzer ? 'critical' : 'neutral'}>{buzzer ? 'Đang kêu' : 'Tắt'}</Badge>
                 </div>
-                <DeferredButton
-                  milestone="24/10"
+                <ActionButton
                   disabled={role === 'VIEWER' || !buzzer}
+                  action={() => actions.sendCommand(device.device_id, 'BUZZER_OFF')}
+                  success="Đã gửi lệnh tắt còi."
                 >
                   Tắt còi
-                </DeferredButton>
+                </ActionButton>
                 <Link to="/alerts" className={ui.link}>
                   Xem cảnh báo
                 </Link>
