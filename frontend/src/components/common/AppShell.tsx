@@ -110,7 +110,7 @@ export function AppShell() {
         )}
         <footer className={styles.preview}>
           {dataSource === 'api'
-            ? 'Dữ liệu trực tiếp từ hệ thống đang chạy, không phải dữ liệu mô phỏng.'
+            ? 'Dữ liệu trực tiếp từ hệ thống.'
             : 'Bản giao diện 15/10 · Dữ liệu mô phỏng, chưa kết nối thiết bị thực.'}
         </footer>
       </main>

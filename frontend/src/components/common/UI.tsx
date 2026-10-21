@@ -69,28 +69,6 @@ export function ActionLink({
     </Link>
   )
 }
-export function DeferredButton({
-  milestone = '29/10',
-  children,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
-  milestone?: string
-  variant?: 'primary' | 'danger'
-}) {
-  const [show, setShow] = useState(false)
-  return (
-    <span className={styles.action}>
-      <Button {...props} onClick={() => setShow(true)}>
-        {children}
-      </Button>
-      {show && (
-        <small role="status" className={styles.notice}>
-          Chức năng này được triển khai ở mốc {milestone}. Chưa gửi hoặc lưu thay đổi.
-        </small>
-      )}
-    </span>
-  )
-}
 export function ActionButton({
   action,
   confirm,
