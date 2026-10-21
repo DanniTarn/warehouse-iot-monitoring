@@ -80,7 +80,7 @@ describe('AC-2 and AC-4: routes and role boundaries', () => {
     expect(screen.getByRole('button', { name: 'Bạn' })).toBeDisabled()
   })
 })
-describe('AC-3 and AC-6: login and honest prototype interactions', () => {
+describe('AC-3 and AC-6: login and live actions', () => {
   it('redirects an unauthenticated route to the labelled login form', async () => {
     render(
       <MemoryRouter
@@ -130,6 +130,71 @@ describe('AC-3 and AC-6: login and honest prototype interactions', () => {
     await waitFor(() => expect(screen.getByLabelText('Tên đăng nhập')).toBeVisible())
     expect(sessionStorage.getItem('warehouse.session')).toBeNull()
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+  })
+})
+
+describe('real actions against the store', () => {
+  it('moves an acknowledged alert out of the open tab', async () => {
+    const user = userEvent.setup()
+    await open('/alerts')
+    const message = await screen.findByText('Cửa kho bị mở ngoài giờ giới nghiêm')
+    const row = message.closest('article')!
+    expect(screen.getByRole('button', { name: /Đã xử lý/ })).toHaveTextContent('3')
+    await user.click(within(row).getByRole('button', { name: 'Xác nhận đã xử lý' }))
+    await waitFor(() =>
+      expect(screen.queryByText('Cửa kho bị mở ngoài giờ giới nghiêm')).not.toBeInTheDocument(),
+    )
+    expect(screen.getByRole('button', { name: /Đã xử lý/ })).toHaveTextContent('4')
+  })
+
+  it('saves configuration and keeps it after reopening the device', async () => {
+    const user = userEvent.setup()
+    await open('/devices/1')
+    const humidity = await screen.findByLabelText('Ngưỡng độ ẩm (%)')
+    await user.clear(humidity)
+    await user.type(humidity, '70')
+    await user.click(screen.getByRole('button', { name: 'Lưu cấu hình' }))
+    expect(await screen.findByText('Đã lưu cấu hình.')).toBeVisible()
+
+    const nav = screen.getByRole('navigation', { name: 'Điều hướng chính' })
+    await user.click(within(nav).getByRole('link', { name: 'Thiết bị' }))
+    const row = (await screen.findByText('Node 1 · Môi trường')).closest('tr')!
+    await user.click(within(row).getByRole('link', { name: 'Chi tiết' }))
+    expect(await screen.findByLabelText('Ngưỡng độ ẩm (%)')).toHaveValue(70)
+  })
+
+  it('creates a user and shows it in the list', async () => {
+    const user = userEvent.setup()
+    await open('/users')
+    await user.type(await screen.findByLabelText('Tên đăng nhập'), 'thu.nghiem')
+    await user.type(screen.getByLabelText('Họ và tên'), 'Nguyễn Văn Thử')
+    await user.type(screen.getByLabelText('Mật khẩu tạm'), 'Thu@12345')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
+    expect(await screen.findByText('Nguyễn Văn Thử')).toBeVisible()
+    expect(screen.getByLabelText('Tên đăng nhập')).toHaveValue('')
+  })
+
+  it('registers a device, shows its token once and links to its page', async () => {
+    const user = userEvent.setup()
+    await open('/devices/new')
+    await user.type(await screen.findByLabelText('Tên hiển thị'), 'Node 9 · Kiểm thử')
+    await user.type(screen.getByLabelText('Mã thiết bị'), 'NODE9_ENV')
+    await user.type(screen.getByLabelText('Địa chỉ MAC của ESP32'), '24:6F:28:AA:BB:CC')
+    await user.click(screen.getByRole('button', { name: 'Đăng ký thiết bị' }))
+    expect(await screen.findByLabelText('Token xác thực')).toHaveTextContent(
+      /^mock-token-NODE9_ENV-\d+$/,
+    )
+    await user.click(screen.getByRole('link', { name: 'Mở trang thiết bị' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Node 9 · Kiểm thử', level: 1 }),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Kích hoạt' })).toBeVisible()
+  })
+
+  it('hides alert action buttons from a viewer', async () => {
+    await open('/alerts', 'viewer01')
+    expect((await screen.findAllByText('Chưa xử lý')).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: 'Xác nhận đã xử lý' })).not.toBeInTheDocument()
   })
 })
 
