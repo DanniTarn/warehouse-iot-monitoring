@@ -70,8 +70,8 @@ export interface DeviceCommand {
   command_id: number
   device_id: number
   device_code: string
-  user_id: number
-  username: string
+  user_id: number | null
+  username: string | null
   command_type: CommandType
   parameters: Record<string, unknown> | null
   status: CommandStatus
