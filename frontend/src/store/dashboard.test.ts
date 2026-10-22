@@ -244,6 +244,38 @@ describe('dashboard applyEvent command status', () => {
   })
 })
 
+describe('dashboard applyEvent fan mode', () => {
+  it('keeps AUTO when the rule engine acknowledges an automatic fan command', () => {
+    load()
+    useDashboard.getState().applyEvent({
+      type: 'command_status',
+      data: command(3, {
+        device_id: 1,
+        device_code: 'NODE1_ENV',
+        user_id: null,
+        username: null,
+        command_type: 'FAN_OFF',
+        status: 'ACKNOWLEDGED',
+      }),
+    })
+    expect(useDashboard.getState().data!.presentation.fan_mode).toBe('auto')
+  })
+
+  it('switches to the forced mode when a user fan command is acknowledged', () => {
+    load()
+    useDashboard.getState().applyEvent({
+      type: 'command_status',
+      data: command(4, {
+        device_id: 1,
+        device_code: 'NODE1_ENV',
+        command_type: 'FAN_OFF',
+        status: 'ACKNOWLEDGED',
+      }),
+    })
+    expect(useDashboard.getState().data!.presentation.fan_mode).toBe('off')
+  })
+})
+
 describe('dashboard local upserts', () => {
   it('inserts a newly registered device and replaces a saved one', () => {
     load()

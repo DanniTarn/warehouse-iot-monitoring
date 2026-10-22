@@ -36,9 +36,10 @@ function upsert<T>(items: T[], saved: T, key: (item: T) => number) {
 
 function fanModeOf(command: DeviceCommand): DeviceConfig['fan_mode'] | null {
   if (command.status !== 'ACKNOWLEDGED') return null
+  if (command.command_type === 'FAN_AUTO') return 'AUTO'
+  if (command.user_id === null) return null
   if (command.command_type === 'FAN_ON') return 'ON'
   if (command.command_type === 'FAN_OFF') return 'OFF'
-  if (command.command_type === 'FAN_AUTO') return 'AUTO'
   return null
 }
 
