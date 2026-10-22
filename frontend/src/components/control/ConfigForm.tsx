@@ -136,7 +136,7 @@ export function ConfigForm({
           </div>
         )}
         {error && <Notice error>{error}</Notice>}
-        {saved && <Notice>Đã lưu cấu hình.</Notice>}
+        {saved && !dirty && <Notice>Đã lưu cấu hình.</Notice>}
       </form>
     </Card>
   )
