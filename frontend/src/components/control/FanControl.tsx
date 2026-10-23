@@ -3,6 +3,7 @@ import { useAuth } from '../../store/auth'
 import { useDashboard } from '../../store/dashboard'
 import { useActions } from '../../store/actions'
 import { MONITORING } from '../../services/config'
+import { fanState } from '../../services/dashboardView'
 import type { ManualCommandType } from '../../services/types'
 import { Badge, Notice } from '../common/UI'
 import styles from '../common/UI.module.css'
@@ -21,8 +22,9 @@ export function FanControl({
   const target =
     deviceId ??
     data?.devices.find((device) => device.device_code === MONITORING.environmentCode)?.device_id
-  const mode = data?.presentation.fan_mode
-  const running = data?.presentation.fan_running
+  const { mode, running } = data
+    ? fanState(data, target)
+    : { mode: undefined, running: undefined }
   const options: [ManualCommandType, 'auto' | 'on' | 'off', string][] = [
     ['FAN_AUTO', 'auto', 'Tự động'],
     ['FAN_ON', 'on', detailed ? 'Bật cưỡng chế' : 'Bật'],

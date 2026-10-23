@@ -276,6 +276,17 @@ describe('dashboard applyEvent fan mode', () => {
   })
 })
 
+describe('dashboard applyEvent command buffer', () => {
+  it('keeps only the newest 200 commands from the live feed', () => {
+    load()
+    for (let id = 2; id <= 401; id++)
+      useDashboard.getState().applyEvent({ type: 'command_status', data: command(id) })
+    const commands = useDashboard.getState().data!.commands
+    expect(commands).toHaveLength(200)
+    expect(commands[0].command_id).toBe(401)
+  })
+})
+
 describe('dashboard local upserts', () => {
   it('inserts a newly registered device and replaces a saved one', () => {
     load()
