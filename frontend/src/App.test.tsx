@@ -200,6 +200,19 @@ describe('real actions against the store', () => {
     expect(screen.getByRole('button', { name: 'Kích hoạt' })).toBeVisible()
   })
 
+  it('drops stale lifecycle messages and the revoked token after decommissioning', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    await open('/devices/4')
+    await user.click(await screen.findByRole('button', { name: 'Kích hoạt lại' }))
+    await screen.findByRole('button', { name: 'Chuyển bảo trì' })
+    expect(screen.queryByText('Đã kích hoạt lại thiết bị.')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Cấp lại token' }))
+    expect(await screen.findByLabelText('Token xác thực')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Thu hồi thiết bị' }))
+    expect(await screen.findByText('Đã thu hồi thiết bị.')).toBeVisible()
+    expect(screen.queryByLabelText('Token xác thực')).not.toBeInTheDocument()
+  })
   it('hides alert action buttons from a viewer', async () => {
     await open('/alerts', 'viewer01')
     expect((await screen.findAllByText('Chưa xử lý')).length).toBeGreaterThan(0)

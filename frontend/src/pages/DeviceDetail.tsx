@@ -29,7 +29,7 @@ export default function DeviceDetail() {
   const data = useDashboard((s) => s.data)!
   const role = useAuth((s) => s.user?.role)
   const actions = useActions()
-  const [issuedToken, setIssuedToken] = useState('')
+  const [issued, setIssued] = useState<{ deviceId: number; token: string } | null>(null)
   const device = data.devices.find((d) => String(d.device_id) === deviceId)
   if (!device)
     return (
@@ -82,6 +82,7 @@ export default function DeviceDetail() {
             <div className="row">
               {device.lifecycle_status === 'REGISTERED' ? (
                 <ActionButton
+                  key="activate"
                   action={() => actions.activateDevice(device.device_id)}
                   success="Đã kích hoạt thiết bị."
                 >
@@ -89,6 +90,7 @@ export default function DeviceDetail() {
                 </ActionButton>
               ) : device.lifecycle_status === 'MAINTENANCE' ? (
                 <ActionButton
+                  key="reactivate"
                   action={() => actions.setLifecycle(device.device_id, 'ACTIVE')}
                   success="Đã kích hoạt lại thiết bị."
                 >
@@ -96,6 +98,7 @@ export default function DeviceDetail() {
                 </ActionButton>
               ) : (
                 <ActionButton
+                  key="maintenance"
                   disabled={device.lifecycle_status === 'DECOMMISSIONED'}
                   action={() => actions.setLifecycle(device.device_id, 'MAINTENANCE')}
                   success="Đã chuyển thiết bị sang bảo trì."
@@ -140,15 +143,19 @@ export default function DeviceDetail() {
                   disabled={device.lifecycle_status === 'DECOMMISSIONED'}
                   confirm="Cấp lại token sẽ khiến thiết bị dùng token cũ mất kết nối. Tiếp tục?"
                   action={async () =>
-                    setIssuedToken(await actions.rotateDeviceToken(device.device_id))
+                    setIssued({
+                      deviceId: device.device_id,
+                      token: await actions.rotateDeviceToken(device.device_id),
+                    })
                   }
                 >
                   Cấp lại token
                 </ActionButton>
-                {issuedToken && (
+                {issued?.deviceId === device.device_id &&
+                  device.lifecycle_status !== 'DECOMMISSIONED' && (
                   <Notice>
                     Token mới chỉ hiển thị một lần. Sao chép ngay và không đưa lên GitHub.
-                    <SecretToken token={issuedToken} />
+                    <SecretToken token={issued.token} />
                   </Notice>
                 )}
               </>
