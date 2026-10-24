@@ -287,6 +287,13 @@ const data: DashboardData = {
   ],
   presentation: derivePresentation({ devices, configs, telemetry, alerts, commands }),
 }
+const MANUAL_COMMANDS: string[] = ['FAN_ON', 'FAN_OFF', 'FAN_AUTO', 'BUZZER_OFF']
+const CONFIG_RANGES = {
+  temperature_threshold: ['Ngưỡng nhiệt độ', 0, 125],
+  humidity_threshold: ['Ngưỡng độ ẩm', 0, 100],
+  smoke_gas_threshold: ['Ngưỡng khói', 0, 100000],
+  telemetry_interval: ['Chu kỳ dữ liệu', 1, 3600],
+} as const
 const wait = () => new Promise((resolve) => setTimeout(resolve, 180))
 function sessionUser(token: string) {
   const user = users.find((item) => `mock-session-${item.username}` === token && item.is_active)
@@ -357,6 +364,7 @@ export const mockApi: ApiClient = {
     await wait()
     const user = sessionUser(token)
     requireRole(user, ['ADMIN', 'OPERATOR'])
+    if (!MANUAL_COMMANDS.includes(type)) throw new HttpError(400, 'Loại lệnh không hợp lệ.')
     const device = findDevice(deviceId)
     if (device.lifecycle_status !== 'ACTIVE') {
       throw new HttpError(409, 'Thiết bị chưa kích hoạt hoặc đang bị khóa.')
@@ -395,12 +403,12 @@ export const mockApi: ApiClient = {
     if (!/^NODE[0-9]+_(ENV|SEC)$/.test(input.device_code)) {
       throw new HttpError(400, 'Mã thiết bị cần có dạng NODE1_ENV hoặc NODE2_SEC.')
     }
-    if (devices.some((item) => item.device_code === input.device_code)) {
-      throw new HttpError(409, 'Mã thiết bị đã tồn tại.')
-    }
     const mac = input.mac_address.toUpperCase()
     if (!/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(mac)) {
       throw new HttpError(400, 'Địa chỉ MAC không hợp lệ.')
+    }
+    if (devices.some((item) => item.device_code === input.device_code || item.mac_address === mac)) {
+      throw new HttpError(409, 'Dữ liệu đã tồn tại.')
     }
     const deviceId = Math.max(0, ...devices.map((item) => item.device_id)) + 1
     const warehouse = warehouses.find((item) => item.warehouse_id === input.warehouse_id)
@@ -453,7 +461,7 @@ export const mockApi: ApiClient = {
       throw new HttpError(409, 'Hãy kích hoạt thiết bị trước khi thay đổi vòng đời.')
     }
     device.lifecycle_status = status
-    if (status === 'DECOMMISSIONED') device.online = false
+    device.online = false
     if (status === 'ACTIVE') device.last_heartbeat = null
     return structuredClone(device)
   },
@@ -481,6 +489,15 @@ export const mockApi: ApiClient = {
     ]
     if (!fields.some((field) => patch[field] !== undefined)) {
       throw new HttpError(400, 'Chưa có cấu hình cần thay đổi.')
+    }
+    for (const [field, [label, min, max]] of Object.entries(CONFIG_RANGES)) {
+      const value = patch[field as keyof typeof CONFIG_RANGES]
+      if (value === undefined || value === null) continue
+      if (!Number.isFinite(value) || value < min || value > max)
+        throw new HttpError(400, `${label} không hợp lệ.`)
+    }
+    if (patch.telemetry_interval !== undefined && !Number.isInteger(patch.telemetry_interval)) {
+      throw new HttpError(400, 'Chu kỳ dữ liệu phải là số nguyên dương.')
     }
     if (patch.temperature_threshold !== undefined) {
       config.temperature_threshold = patch.temperature_threshold

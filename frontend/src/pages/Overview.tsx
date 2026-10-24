@@ -91,7 +91,7 @@ export default function Overview() {
           {viewer ? (
             <span>Tài khoản Viewer chỉ có quyền xem.</span>
           ) : (
-            <div className="row">
+            <div className="row" key={critical.alert_id}>
               <ActionButton
                 disabled={!data.presentation.buzzer_sounding || !secDevice}
                 action={silenceBuzzer}

@@ -24,6 +24,7 @@ import { FanControl } from '../components/control/FanControl'
 import { ConfigForm } from '../components/control/ConfigForm'
 import ui from '../components/common/UI.module.css'
 import styles from './Pages.module.css'
+import { buzzerSounding } from '../services/dashboardView'
 export default function DeviceDetail() {
   const { deviceId } = useParams()
   const data = useDashboard((s) => s.data)!
@@ -47,7 +48,7 @@ export default function DeviceDetail() {
   const temperatureThreshold = config?.temperature_threshold ?? 50
   const humidityHigh = reading?.humidity != null && reading.humidity > humidityThreshold
   const temperatureHigh = reading?.temperature != null && reading.temperature > temperatureThreshold
-  const buzzer = data.presentation.buzzer_sounding
+  const buzzer = buzzerSounding(data.commands, device.device_id)
   const commands = data.commands.filter((command) => command.device_id === device.device_id)
   const sensors: [string, string][] = environment
     ? [
@@ -108,7 +109,10 @@ export default function DeviceDetail() {
               )}
               <ActionButton
                 variant="danger"
-                disabled={device.lifecycle_status === 'DECOMMISSIONED'}
+                disabled={
+                  device.lifecycle_status === 'DECOMMISSIONED' ||
+                  device.lifecycle_status === 'REGISTERED'
+                }
                 confirm="Thu hồi thiết bị sẽ xóa token và chặn kết nối. Tiếp tục?"
                 action={() => actions.setLifecycle(device.device_id, 'DECOMMISSIONED')}
                 success="Đã thu hồi thiết bị."
