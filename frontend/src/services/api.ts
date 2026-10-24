@@ -45,6 +45,7 @@ export interface ApiClient {
   login(username: string, password: string): Promise<{ token: string; user: User }>
   me(token: string): Promise<User>
   dashboard(token: string): Promise<DashboardData>
+  audit(token: string): Promise<AuditLog[]>
   acknowledgeAlert(token: string, alertId: number): Promise<Alert>
   sendCommand(
     token: string,

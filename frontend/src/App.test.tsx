@@ -183,6 +183,19 @@ describe('real actions against the store', () => {
     expect(screen.getByLabelText('Tên đăng nhập')).toHaveValue('')
   })
 
+  it('shows a new account in the audit history without reloading', async () => {
+    const user = userEvent.setup()
+    await open('/users')
+    await user.type(await screen.findByLabelText('Tên đăng nhập'), 'kiem.toan')
+    await user.type(screen.getByLabelText('Họ và tên'), 'Kiểm Toán')
+    await user.type(screen.getByLabelText('Mật khẩu tạm'), 'Kiem@12345')
+    await user.click(screen.getByRole('button', { name: 'Tạo tài khoản' }))
+    await screen.findByText('Kiểm Toán')
+    await user.click(screen.getByRole('link', { name: /Lịch sử/ }))
+    await user.click(await screen.findByRole('link', { name: 'Nhật ký thao tác' }))
+    expect(await screen.findByText('kiem.toan · VIEWER')).toBeVisible()
+  })
+
   it('registers a device, shows its token once and links to its page', async () => {
     const user = userEvent.setup()
     await open('/devices/new')
