@@ -329,3 +329,38 @@ describe('per-device fan and buzzer state', () => {
     expect(buzzerSounding(commands, 2)).toBe(false)
   })
 })
+
+describe('derivePresentation fan state when a command left the window', () => {
+  it('keeps a forced-on fan running from the saved mode alone', () => {
+    const telemetry = [
+      reading({
+        telemetry_id: 1,
+        device_id: 1,
+        device_code: 'NODE1_ENV',
+        recorded_at: at(5),
+        humidity: 40,
+      }),
+    ]
+    const state = derivePresentation(
+      input({ configs: [config(1, { fan_mode: 'ON' })], telemetry, commands: [] }),
+    )
+    expect(state.fan_mode).toBe('on')
+    expect(state.fan_running).toBe(true)
+  })
+
+  it('keeps a forced-off fan stopped even above the humidity threshold', () => {
+    const telemetry = [
+      reading({
+        telemetry_id: 1,
+        device_id: 1,
+        device_code: 'NODE1_ENV',
+        recorded_at: at(5),
+        humidity: 90,
+      }),
+    ]
+    const state = derivePresentation(
+      input({ configs: [config(1, { fan_mode: 'OFF' })], telemetry, commands: [] }),
+    )
+    expect(state.fan_running).toBe(false)
+  })
+})

@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useDashboard } from '../store/dashboard'
+import { api, type HistoryRows } from '../services/api'
 import { dateTime, number, TIME_ZONE } from '../services/format'
 import { MONITORING } from '../services/config'
 import { toCsv } from '../services/csv'
@@ -21,6 +22,7 @@ function todayInVietnam() {
 }
 export default function History() {
   const data = useDashboard((s) => s.data)!
+  const token = useAuth((s) => s.token)
   const admin = useAuth((s) => s.user?.role === 'ADMIN')
   const [params] = useSearchParams()
   const tab = params.get('tab') || 'telemetry'
@@ -28,28 +30,53 @@ export default function History() {
   const [from, setFrom] = useState(todayInVietnam)
   const [to, setTo] = useState(todayInVietnam)
   const [page, setPage] = useState(0)
-  if (!['telemetry', 'commands', 'audit'].includes(tab) || (tab === 'audit' && !admin))
-    return <Navigate to="/history?tab=telemetry" replace />
+  const [rows, setRows] = useState<HistoryRows | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const invalid = !!from && !!to && from > to
-  function inRange(timestamp: string) {
-    const instant = new Date(timestamp).getTime()
-    return (
-      !invalid &&
-      (!from || instant >= new Date(`${from}T00:00:00+07:00`).getTime()) &&
-      (!to || instant <= new Date(`${to}T23:59:59.999+07:00`).getTime())
-    )
-  }
-  const telemetry = data.telemetry.filter(
-    (r) => (!device || device === String(r.device_id)) && inRange(r.recorded_at),
-  )
-  const commands = data.commands.filter(
-    (r) => (!device || device === String(r.device_id)) && inRange(r.sent_at),
-  )
-  const audit = data.audit.filter((r) => inRange(r.created_at))
+  const allowed = ['telemetry', 'commands', 'audit'].includes(tab) && (tab !== 'audit' || admin)
+  useEffect(() => {
+    if (!token || !allowed || invalid) {
+      setRows(null)
+      setLoading(false)
+      return
+    }
+    let active = true
+    setLoading(true)
+    setError('')
+    api
+      .history(token, {
+        tab: tab as 'telemetry' | 'commands' | 'audit',
+        from,
+        to,
+        deviceId: device ? Number(device) : undefined,
+      })
+      .then((result) => {
+        if (active) {
+          setRows(result)
+          setLoading(false)
+        }
+      })
+      .catch((reason: unknown) => {
+        if (active) {
+          setRows(null)
+          setError(reason instanceof Error ? reason.message : 'Không tải được lịch sử.')
+          setLoading(false)
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [token, allowed, invalid, tab, from, to, device])
+  if (!allowed) return <Navigate to="/history?tab=telemetry" replace />
+  const telemetry = rows?.tab === 'telemetry' ? rows.rows : []
+  const commands = rows?.tab === 'commands' ? rows.rows : []
+  const audit = rows?.tab === 'audit' ? rows.rows : []
   const total =
     tab === 'telemetry' ? telemetry.length : tab === 'commands' ? commands.length : audit.length
   const current = Math.min(page, Math.max(0, Math.ceil(total / 50) - 1))
-  const slice = <T,>(rows: T[]) => rows.slice(current * 50, (current + 1) * 50)
+  const slice = <T,>(items: T[]) => items.slice(current * 50, (current + 1) * 50)
+  const cap = tab === 'telemetry' ? 5000 : 500
   const tabs = [
     ['telemetry', 'Dữ liệu cảm biến'],
     ['commands', 'Lệnh điều khiển'],
@@ -76,7 +103,7 @@ export default function History() {
         : tab === 'commands'
           ? ['Thời gian gửi', 'Thiết bị', 'Lệnh', 'Người gửi', 'Trạng thái', 'Phản hồi']
           : ['Thời gian', 'Người dùng', 'Hành động', 'IP', 'Chi tiết']
-    const rows =
+    const rowsToWrite =
       tab === 'telemetry'
         ? telemetry.map((row) => [
             dateTime(row.recorded_at, true),
@@ -103,7 +130,7 @@ export default function History() {
               row.ip_client,
               row.details,
             ])
-    const blob = new Blob([toCsv(headers, rows)], { type: 'text/csv;charset=utf-8' })
+    const blob = new Blob([toCsv(headers, rowsToWrite)], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -114,7 +141,9 @@ export default function History() {
   return (
     <>
       <PageHeader title="Lịch sử" subtitle="Dữ liệu cảm biến, lệnh điều khiển và nhật ký thao tác">
-        <Button onClick={exportCsv}>Xuất CSV</Button>
+        <Button onClick={exportCsv} disabled={loading || !total}>
+          Xuất CSV
+        </Button>
       </PageHeader>
       <nav className={ui.tabs} aria-label="Loại lịch sử">
         {tabs.map(([key, title]) => (
@@ -172,6 +201,14 @@ export default function History() {
         </Field>
       </div>
       {invalid && <Notice error>Từ ngày phải trước hoặc bằng Đến ngày.</Notice>}
+      {error && <Notice error>{error}</Notice>}
+      {loading && <Notice>Đang tải lịch sử…</Notice>}
+      {!loading && total === cap && (
+        <Notice>
+          Đã đạt giới hạn {cap} bản ghi. Thu hẹp khoảng ngày hoặc chọn một thiết bị để xem phần còn
+          lại.
+        </Notice>
+      )}
       {tab === 'telemetry' && (
         <Table
           label="Dữ liệu cảm biến"

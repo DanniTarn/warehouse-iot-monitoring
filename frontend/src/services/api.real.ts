@@ -1,4 +1,4 @@
-import type { ApiClient, DashboardData } from './api'
+import type { ApiClient, DashboardData, HistoryQuery, HistoryRows } from './api'
 import { derivePresentation } from './dashboardView'
 import { HttpError, request } from './http'
 import type {
@@ -15,6 +15,32 @@ import type {
 // The backend caps list queries at 500 rows, so two pages fill the 1000-row telemetry window.
 const TELEMETRY_LIMIT = 1000
 const TELEMETRY_PAGE = 500
+const HISTORY_PAGE = 500
+const HISTORY_CAP = 5000
+
+function historyParams(query: HistoryQuery) {
+  const params = new URLSearchParams({ from: query.from, to: query.to, limit: String(HISTORY_PAGE) })
+  if (query.deviceId !== undefined) params.set('device_id', String(query.deviceId))
+  return params
+}
+
+async function pagedHistory<T>(path: string, token: string, query: HistoryQuery) {
+  const rows: T[] = []
+  let offset = query.offset ?? 0
+  while (rows.length < HISTORY_CAP) {
+    const params = historyParams(query)
+    params.set('offset', String(offset))
+    const page = await request<T[]>(`${path}?${params}`, { token })
+    rows.push(...page)
+    if (page.length < HISTORY_PAGE) break
+    offset += HISTORY_PAGE
+  }
+  return rows
+}
+
+async function onePageHistory<T>(path: string, token: string, query: HistoryQuery) {
+  return request<T[]>(`${path}?${historyParams(query)}`, { token })
+}
 
 async function loadTelemetry(token: string) {
   const pages = await Promise.all(
@@ -91,6 +117,16 @@ export const realApi: ApiClient = {
       presentation: derivePresentation({ devices, configs, telemetry, alerts, commands }),
     }
     return data
+  },
+  async history(token, query): Promise<HistoryRows> {
+    if (query.tab === 'telemetry')
+      return { tab: 'telemetry', rows: await pagedHistory<Telemetry>('/telemetry', token, query) }
+    if (query.tab === 'commands')
+      return {
+        tab: 'commands',
+        rows: await onePageHistory<DeviceCommand>('/commands', token, query),
+      }
+    return { tab: 'audit', rows: await onePageHistory<AuditLog>('/audit-logs', token, query) }
   },
   acknowledgeAlert(token, alertId) {
     return request<Alert>(`/alerts/${alertId}/acknowledge`, { token, method: 'POST' })
