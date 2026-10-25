@@ -131,11 +131,42 @@
 @media (max-width: 799px) {
   .sidebar {
     flex-basis: 100%;
+    gap: 10px;
+    padding: 12px 12px 10px;
+  }
+  .brand {
+    padding: 0 4px;
+  }
+  .nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .nav a {
+    flex: none;
+    min-height: 40px;
+    padding: 0 10px;
+    white-space: nowrap;
+  }
+  .count {
+    margin-left: 4px;
+  }
+  .account {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    margin-top: 0;
+    padding: 8px 4px 0;
+  }
+  .account > div:first-child {
+    flex: 1;
+  }
+  .account button {
+    min-height: 36px;
+    margin-left: auto;
   }
   .main {
     flex-basis: 100%;
-  }
-  .account {
-    margin-top: 0;
+    padding: 16px 14px 24px;
   }
 }
