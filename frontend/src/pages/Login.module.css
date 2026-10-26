@@ -32,6 +32,7 @@
 .roles {
   display: flex;
   flex-direction: column;
+  margin-bottom: auto;
   border-top: 1px solid var(--nav-divider);
 }
 .roles div {
