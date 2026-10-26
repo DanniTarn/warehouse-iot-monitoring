@@ -52,9 +52,12 @@ function fanRunning(
   latest: DeviceCommand | undefined,
   humidity: number | null,
   humidityThreshold: number,
+  mode: Presentation['fan_mode'],
 ) {
   if (latest?.command_type === 'FAN_ON') return true
   if (latest?.command_type === 'FAN_OFF') return false
+  if (mode === 'on') return true
+  if (mode === 'off') return false
   return humidity !== null && humidity > humidityThreshold
 }
 
@@ -70,12 +73,14 @@ export function fanState({ configs, telemetry, commands }: FanInput, deviceId: n
   const config = configs.find((item) => item.device_id === deviceId)
   const latest = latestAcknowledged(commands, deviceId, ['FAN_ON', 'FAN_OFF', 'FAN_AUTO'])
   const humidity = newestTelemetry(telemetry, deviceId)?.humidity ?? null
+  const mode = fanMode(config)
   return {
-    mode: fanMode(config),
+    mode,
     running: fanRunning(
       latest,
       humidity,
       config?.humidity_threshold ?? MONITORING.humidityThreshold,
+      mode,
     ),
   }
 }

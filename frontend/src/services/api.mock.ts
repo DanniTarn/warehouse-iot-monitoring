@@ -359,6 +359,30 @@ export const mockApi: ApiClient = {
       presentation: derivePresentation(data),
     })
   },
+  async history(token, query) {
+    await wait()
+    sessionUser(token)
+    const start = Date.parse(`${query.from}T00:00:00+07:00`)
+    const end = Date.parse(`${query.to}T23:59:59.999+07:00`)
+    const inRange = (value: string) => Date.parse(value) >= start && Date.parse(value) <= end
+    const byDevice = (deviceId: number) =>
+      query.deviceId === undefined || query.deviceId === deviceId
+    if (query.tab === 'telemetry')
+      return {
+        tab: 'telemetry',
+        rows: data.telemetry
+          .filter((row) => inRange(row.recorded_at) && byDevice(row.device_id))
+          .slice(0, 5000),
+      }
+    if (query.tab === 'commands')
+      return {
+        tab: 'commands',
+        rows: data.commands
+          .filter((row) => inRange(row.sent_at) && byDevice(row.device_id))
+          .slice(0, 500),
+      }
+    return { tab: 'audit', rows: data.audit.filter((row) => inRange(row.created_at)).slice(0, 500) }
+  },
   async audit(token) {
     await wait()
     requireRole(sessionUser(token), ['ADMIN'])
