@@ -10,7 +10,9 @@ Open these TCP ports in the cloud security list and in the host firewall: 22, 80
 
 ## 2. DNS
 
-Point a free DuckDNS subdomain at the public IP. `SITE_ADDRESS` uses that name, and Caddy needs it to issue the certificate.
+Point a free DuckDNS subdomain at the public IP, or use `<public-ip>.sslip.io` with no setup at all. `SITE_ADDRESS` uses that name, and Caddy needs it to issue the certificate.
+
+If another service already listens on 443 on one interface, such as a Tailscale address, set `PUBLIC_BIND_IP` to the machine's LAN or private IP so only that address is bound.
 
 ## 3. Secrets
 
