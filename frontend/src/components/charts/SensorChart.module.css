@@ -18,3 +18,21 @@
 .legend h2 {
   font-size: 14px;
 }
+.threshold {
+  padding: 1px 6px;
+  border: 1px dashed var(--warn-text);
+  border-radius: var(--r-badge);
+  color: var(--warn-text);
+  font: 600 11px/1.45 var(--font-mono);
+  white-space: nowrap;
+}
+.tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--r-badge);
+  background: var(--ink);
+  color: var(--surface);
+  font: 12px/1.4 var(--font-mono);
+}
