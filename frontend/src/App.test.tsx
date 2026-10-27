@@ -284,6 +284,60 @@ describe('real actions against the store', () => {
   })
 })
 
+describe('device commands and their history', () => {
+  it('shows the ten newest commands on a device page and links to the filtered history', async () => {
+    const user = userEvent.setup()
+    await open('/devices/1')
+    await screen.findByRole('heading', { name: 'Node 1 · Môi trường', level: 1 })
+    const base = useDashboard.getState().data!.commands.find((item) => item.device_id === 1)!
+    act(() => {
+      for (let minute = 1; minute <= 12; minute++)
+        useDashboard.getState().applyEvent({
+          type: 'command_status',
+          data: {
+            ...base,
+            command_id: 1000 + minute,
+            command_type: 'FAN_ON',
+            status: 'ACKNOWLEDGED',
+            user_id: null,
+            username: null,
+            sent_at: `2026-11-09T07:${String(minute).padStart(2, '0')}:00+07:00`,
+          },
+        })
+    })
+    const table = screen.getByRole('region', { name: 'Lệnh điều khiển' })
+    expect(within(table).getAllByRole('row')).toHaveLength(11)
+    expect(within(table).getByText(/07:12:00/)).toBeVisible()
+    expect(within(table).getByText(/07:03:00/)).toBeVisible()
+    expect(within(table).queryByText(/07:02:00/)).not.toBeInTheDocument()
+
+    const history = vi.spyOn(api, 'history')
+    await user.click(screen.getByRole('link', { name: 'Xem tất cả trong Lịch sử' }))
+    expect(await screen.findByRole('heading', { name: 'Lịch sử', level: 1 })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Lệnh điều khiển' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(screen.getByLabelText('Thiết bị')).toHaveDisplayValue('NODE1_ENV')
+    expect(history).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ tab: 'commands', deviceId: 1 }),
+    )
+  })
+
+  it('ignores a device in the history link that does not exist', async () => {
+    const history = vi.spyOn(api, 'history')
+    await open('/history?tab=commands&device=999')
+    expect(await screen.findByLabelText('Thiết bị')).toHaveDisplayValue('Tất cả thiết bị')
+    await waitFor(() =>
+      expect(history).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ tab: 'commands', deviceId: undefined }),
+      ),
+    )
+  })
+})
+
 // AC-6: failure is visible and retry uses the same typed API boundary.
 it('recovers a failed dashboard read when the user retries', async () => {
   const user = userEvent.setup()

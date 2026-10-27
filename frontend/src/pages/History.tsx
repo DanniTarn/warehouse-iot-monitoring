@@ -26,7 +26,10 @@ export default function History() {
   const admin = useAuth((s) => s.user?.role === 'ADMIN')
   const [params] = useSearchParams()
   const tab = params.get('tab') || 'telemetry'
-  const [device, setDevice] = useState('')
+  const [device, setDevice] = useState(() => {
+    const requested = params.get('device') ?? ''
+    return data.devices.some((item) => String(item.device_id) === requested) ? requested : ''
+  })
   const [from, setFrom] = useState(todayInVietnam)
   const [to, setTo] = useState(todayInVietnam)
   const [page, setPage] = useState(0)
