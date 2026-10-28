@@ -36,6 +36,7 @@ export default function Overview() {
   const sec = data.telemetry.find((row) => row.device_code === MONITORING.securityCode)
   const open = data.alerts.filter((alert) => !alert.is_acknowledged)
   const critical = open.find((alert) => alert.severity === 'CRITICAL')
+  const others = open.filter((alert) => alert !== critical)
   const envRows = data.telemetry.filter((row) => row.device_id === envDevice?.device_id)
   const newest = envRows.reduce((latest, row) => Math.max(latest, Date.parse(row.recorded_at)), 0)
   const series = envRows
@@ -90,6 +91,12 @@ export default function Overview() {
             <strong>{critical.alert_message}</strong>
             {data.presentation.buzzer_sounding && (
               <span>Còi và đèn LED đỏ đang báo động tại chỗ.</span>
+            )}
+            {others.length > 0 && (
+              <span>
+                Còn {others.length} cảnh báo đang mở khác.{' '}
+                <Link to="/alerts">Xem tất cả cảnh báo</Link>
+              </span>
             )}
           </div>
           {viewer ? (
@@ -258,7 +265,7 @@ export default function Overview() {
           </div>
         </Card>
         <Card title="Cảnh báo đang mở">
-          {open.slice(0, 5).map((alert) => (
+          {others.slice(0, 5).map((alert) => (
             <div className={styles.smallAlert} key={alert.alert_id}>
               <div className="row between">
                 <Badge value={alert.severity} />
@@ -270,7 +277,11 @@ export default function Overview() {
               </span>
             </div>
           ))}
-          {!open.length && <p className="muted">Không có cảnh báo đang mở.</p>}
+          {!others.length && (
+            <p className="muted">
+              {critical ? 'Không có cảnh báo nào khác.' : 'Không có cảnh báo đang mở.'}
+            </p>
+          )}
           <Link className={ui.link} to="/alerts">
             Xem tất cả
           </Link>
