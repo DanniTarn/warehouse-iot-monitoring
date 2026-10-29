@@ -55,6 +55,14 @@ export interface DeviceConfig {
   fan_mode: FanMode
   updated_at: string
 }
+export interface SystemState {
+  night: boolean
+  night_start_hour: number
+  night_end_hour: number
+  timezone: string
+  server_time: string
+}
+
 export interface Actuator {
   device_id: number
   device_code: string

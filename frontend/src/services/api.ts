@@ -1,5 +1,6 @@
 import type {
   Actuator,
+  SystemState,
   Alert,
   AuditLog,
   ConfigPatch,
@@ -26,6 +27,7 @@ export interface DashboardData {
   alerts: Alert[]
   commands: DeviceCommand[]
   actuators: Actuator[]
+  system: SystemState
   audit: AuditLog[]
   users: User[]
   warehouses: Warehouse[]

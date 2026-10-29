@@ -86,13 +86,17 @@ test('Khói cao kích hoạt cảnh báo và hai lệnh tới Node 2', () => {
   ]);
 });
 
-test('Phát hiện xâm nhập chỉ khi chế độ đêm bật và đang ngoài giờ', () => {
+test('Cửa và chuyển động tạo cảnh báo mọi lúc, mức độ theo giờ', () => {
   const current = { door_status: true, motion_detected: true };
   const before = { door_status: false, motion_detected: false };
   const night = planRules('NODE2_SEC', { night_mode_enabled: true }, current, before, true);
   assert.deepEqual(night.alerts.map(a => a.type), ['DOOR_BREACH', 'MOTION_INTRUSION']);
+  assert.deepEqual(night.alerts.map(a => a.severity), ['CRITICAL', 'CRITICAL']);
   assert.deepEqual(night.commands, [{ code: 'NODE2_SEC', type: 'BUZZER_ON' }]);
-  assert.equal(planRules('NODE2_SEC', { night_mode_enabled: true }, current, before, false).alerts.length, 0);
+  const day = planRules('NODE2_SEC', { night_mode_enabled: true }, current, before, false);
+  assert.deepEqual(day.alerts.map(a => a.severity), ['WARNING', 'WARNING']);
+  assert.match(day.alerts[0].message, /trong giờ làm việc/);
+  assert.deepEqual(day.commands, []);
   assert.equal(planRules('NODE2_SEC', { night_mode_enabled: false }, current, before, true).alerts.length, 0);
 });
 
