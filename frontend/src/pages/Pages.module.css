@@ -211,3 +211,29 @@
   font-size: 13px;
   color: var(--ink-2);
 }
+.overview {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+@media (max-width: 640px) {
+  .stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .panels {
+    display: contents;
+  }
+  .openAlerts {
+    order: 1;
+  }
+  .quickControls {
+    order: 2;
+  }
+  .devicesPanel {
+    order: 3;
+  }
+  .charts {
+    order: 4;
+  }
+}
