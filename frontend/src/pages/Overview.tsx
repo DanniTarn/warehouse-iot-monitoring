@@ -1,24 +1,26 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../store/auth'
-import { useDashboard } from '../store/dashboard'
-import { useActions } from '../store/actions'
-import { MONITORING } from '../services/config'
-import { dateTime, number } from '../services/format'
+import { BellRing, CircleAlert, TriangleAlert } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PageHeader } from '@/components/app/page-header'
 import {
   ActionButton,
-  Badge,
-  Card,
   Connection,
   Heartbeat,
-  PageHeader,
-  Stat,
-} from '../components/common/UI'
-import { Icon } from '../components/common/Icon'
-import { FanControl } from '../components/control/FanControl'
-import { SensorChart } from '../components/charts/SensorChart'
-import ui from '../components/common/UI.module.css'
-import styles from './Pages.module.css'
+  StatCard,
+  ToneBadge,
+} from '@/components/app/kit'
+import { FanControl } from '@/components/control/FanControl'
+import { SensorChart } from '@/components/charts/SensorChart'
+import { MONITORING } from '@/services/config'
+import { dateTime, number } from '@/services/format'
+import { useActions } from '@/store/actions'
+import { useAuth } from '@/store/auth'
+import { useDashboard } from '@/store/dashboard'
+import { cn } from '@/lib/utils'
+
 export default function Overview() {
   const data = useDashboard((s) => s.data)!
   const connection = useDashboard((s) => s.connection)
@@ -57,53 +59,77 @@ export default function Overview() {
     return actions.sendCommand(secDevice.device_id, 'BUZZER_OFF')
   }
   return (
-    <div className={styles.overview}>
+    <div className="space-y-4">
       <PageHeader
         title="Tổng quan"
         subtitle={
-          <div className="row">
+          <div className="flex flex-wrap items-center gap-2">
             <span>Kho chính</span>
             {connection === 'live' ? (
-              <Badge tone="good">Trực tiếp</Badge>
+              <ToneBadge tone="good">Trực tiếp</ToneBadge>
             ) : (
-              <Badge tone="neutral">Mất kết nối, đang thử lại…</Badge>
+              <ToneBadge tone="warning">Mất kết nối, đang thử lại…</ToneBadge>
             )}
-            <span className="mono small">Cập nhật {dateTime(data.snapshot_at, true)}</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              Cập nhật {dateTime(data.snapshot_at, true)}
+            </span>
           </div>
         }
-      >
-        <div className={ui.segmented} role="group" aria-label="Khoảng thời gian biểu đồ">
-          {[1, 6, 24].map((hours) => (
-            <button key={hours} aria-pressed={range === hours} onClick={() => setRange(hours)}>
-              {hours} giờ
-            </button>
-          ))}
-        </div>
-      </PageHeader>
+        actions={
+          <div
+            className="inline-flex rounded-lg border bg-card p-1"
+            role="group"
+            aria-label="Khoảng thời gian biểu đồ"
+          >
+            {[1, 6, 24].map((hours) => (
+              <Button
+                key={hours}
+                size="sm"
+                variant={range === hours ? 'secondary' : 'ghost'}
+                aria-pressed={range === hours}
+                className={cn('h-7 px-3', range === hours && 'shadow-xs')}
+                onClick={() => setRange(hours)}
+              >
+                {hours} giờ
+              </Button>
+            ))}
+          </div>
+        }
+      />
+
       {critical && (
-        <div className={styles.banner} role="alert">
-          <Icon name="critical" size={26} />
-          <div className={styles.bannerText}>
-            <span className="mono small">
+        <div
+          role="alert"
+          className="flex flex-col gap-4 rounded-xl border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-start"
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700">
+            <CircleAlert className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1 space-y-1">
+            <span className="font-mono text-[11px] uppercase tracking-wide text-red-700">
               CRITICAL · {critical.alert_type} · {critical.device_code} ·{' '}
               {dateTime(critical.created_at, true)}
             </span>
-            <strong>{critical.alert_message}</strong>
+            <p className="font-semibold text-red-950">{critical.alert_message}</p>
             {data.presentation.buzzer_sounding && (
-              <span>Còi và đèn LED đỏ đang báo động tại chỗ.</span>
+              <p className="text-sm text-red-900">Còi và đèn LED đỏ đang báo động tại chỗ.</p>
             )}
             {others.length > 0 && (
-              <span>
+              <p className="text-sm text-red-900">
                 Còn {others.length} cảnh báo đang mở khác.{' '}
-                <Link to="/alerts">Xem tất cả cảnh báo</Link>
-              </span>
+                <Link to="/alerts" className="font-medium underline underline-offset-4">
+                  Xem tất cả cảnh báo
+                </Link>
+              </p>
             )}
           </div>
           {viewer ? (
-            <span>Tài khoản Viewer chỉ có quyền xem.</span>
+            <p className="text-sm text-red-900">Tài khoản Viewer chỉ có quyền xem.</p>
           ) : (
-            <div className="row" key={critical.alert_id}>
+            <div className="flex shrink-0 flex-wrap gap-2" key={critical.alert_id}>
               <ActionButton
+                variant="outline"
+                size="sm"
                 disabled={!data.presentation.buzzer_sounding || !secDevice}
                 action={silenceBuzzer}
                 success="Đã gửi lệnh tắt còi."
@@ -111,6 +137,7 @@ export default function Overview() {
                 Tắt còi
               </ActionButton>
               <ActionButton
+                size="sm"
                 action={() => actions.acknowledgeAlert(critical.alert_id)}
                 success="Đã xác nhận cảnh báo."
               >
@@ -120,8 +147,12 @@ export default function Overview() {
           )}
         </div>
       )}
-      <section aria-label="Chỉ số hiện tại" className={styles.stats}>
-        <Stat
+
+      <section
+        aria-label="Chỉ số hiện tại"
+        className="grid grid-cols-2 gap-3 xl:grid-cols-5"
+      >
+        <StatCard
           label="Nhiệt độ"
           sensor="DHT22"
           value={number(env?.temperature)}
@@ -135,7 +166,7 @@ export default function Overview() {
           }
           tone={env?.temperature == null ? 'muted' : temperatureHigh ? 'warning' : 'good'}
         />
-        <Stat
+        <StatCard
           label="Độ ẩm"
           sensor="DHT22"
           value={number(env?.humidity)}
@@ -149,7 +180,7 @@ export default function Overview() {
           }
           tone={env?.humidity == null ? 'muted' : humidityHigh ? 'warning' : 'good'}
         />
-        <Stat
+        <StatCard
           label="Khói / khí gas"
           sensor="MQ-2"
           value={number(env?.smoke_gas_level, 0)}
@@ -163,7 +194,7 @@ export default function Overview() {
           }
           tone={env?.smoke_gas_level == null ? 'muted' : smokeHigh ? 'warning' : 'good'}
         />
-        <Stat
+        <StatCard
           label="Cửa kho"
           sensor="MC-38"
           value={sec?.door_status == null ? '—' : sec.door_status ? 'Mở' : 'Đóng'}
@@ -176,7 +207,7 @@ export default function Overview() {
           }
           tone={sec?.door_status ? 'critical' : 'good'}
         />
-        <Stat
+        <StatCard
           label="Chuyển động"
           sensor="HC-SR501"
           value={sec?.motion_detected == null ? '—' : sec.motion_detected ? 'Có' : 'Không'}
@@ -190,103 +221,147 @@ export default function Overview() {
           tone={sec?.motion_detected ? 'critical' : 'muted'}
         />
       </section>
-      <section aria-label="Biểu đồ cảm biến" className={`${styles.grid} ${styles.charts}`}>
-        <SensorChart
-          title="Nhiệt độ"
-          unit="°C"
-          sensor="DHT22"
-          field="temperature"
-          color="series-temp"
-          domain={[24, 32]}
-          data={series}
-          period={period}
-        />
-        <SensorChart
-          title="Độ ẩm"
-          unit="%"
-          sensor="DHT22"
-          field="humidity"
-          color="series-humidity"
-          domain={[50, 80]}
-          threshold={humidityThreshold}
-          data={series}
-          period={period}
-        />
-        <SensorChart
-          title="Khói / khí gas"
-          unit={MONITORING.smoke.unit}
-          sensor="MQ-2"
-          field="smoke_gas_level"
-          color="series-smoke"
-          domain={MONITORING.smoke.domain}
-          threshold={smokeThreshold}
-          data={series}
-          period={period}
-        />
-      </section>
-      <section className={`${styles.grid} ${styles.panels}`}>
-        <Card title="Điều khiển nhanh" className={styles.quickControls}>
-          <FanControl />
-          <div className="row between">
-            <strong>Còi báo động</strong>
-            <Badge tone={data.presentation.buzzer_sounding ? 'critical' : 'neutral'}>
-              {data.presentation.buzzer_sounding ? 'Đang kêu' : 'Tắt'}
-            </Badge>
-          </div>
-          <ActionButton
-            disabled={viewer || !data.presentation.buzzer_sounding || !secDevice}
-            action={silenceBuzzer}
-            success="Đã gửi lệnh tắt còi."
-          >
-            Tắt còi
-          </ActionButton>
-          <span className="mono small muted">BUZZER_OFF · {MONITORING.securityCode}</span>
-        </Card>
-        <Card title="Thiết bị" className={styles.devicesPanel}>
-          {data.devices.slice(0, 2).map((device) => (
-            <div className={styles.deviceRow} key={device.device_id}>
-              <div className="row between">
-                <Link to={`/devices/${device.device_id}`}>{device.device_name}</Link>
-                <Connection device={device} />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <section
+          aria-label="Biểu đồ cảm biến"
+          className="order-5 grid gap-4 md:grid-cols-3 lg:order-1 lg:col-span-3"
+        >
+          <SensorChart
+            title="Nhiệt độ"
+            unit="°C"
+            sensor="DHT22"
+            field="temperature"
+            color="var(--chart-temp)"
+            domain={[24, 32]}
+            data={series}
+            period={period}
+          />
+          <SensorChart
+            title="Độ ẩm"
+            unit="%"
+            sensor="DHT22"
+            field="humidity"
+            color="var(--chart-humidity)"
+            domain={[50, 80]}
+            threshold={humidityThreshold}
+            data={series}
+            period={period}
+          />
+          <SensorChart
+            title="Khói / khí gas"
+            unit={MONITORING.smoke.unit}
+            sensor="MQ-2"
+            field="smoke_gas_level"
+            color="var(--chart-smoke)"
+            domain={MONITORING.smoke.domain}
+            threshold={smokeThreshold}
+            data={series}
+            period={period}
+          />
+        </section>
+
+        <Card className="order-2 lg:order-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <TriangleAlert className="size-4 text-muted-foreground" />
+              Cảnh báo đang mở
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {others.slice(0, 5).map((alert) => (
+              <div key={alert.alert_id} className="space-y-1 rounded-lg border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <ToneBadge tone={alert.severity === 'CRITICAL' ? 'critical' : 'warning'}>
+                    {alert.severity}
+                  </ToneBadge>
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {dateTime(alert.created_at)}
+                  </span>
+                </div>
+                <p className="text-sm font-medium">{alert.alert_message}</p>
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  {alert.alert_type} · {alert.device_code}
+                </p>
               </div>
-              <span className="mono small muted">{device.device_code}</span>
-              <Heartbeat device={device} />
-            </div>
-          ))}
-          <div className="row between">
-            <span>Chế độ ban đêm</span>
-            <Badge tone={envConfig?.night_mode_enabled ? 'info' : 'neutral'}>
-              {envConfig?.night_mode_enabled ? 'Đang bật' : 'Đang tắt'}
-            </Badge>
-          </div>
-          <div className="row between">
-            <span>Đèn LED</span>
-            <span className="critical">{data.presentation.led}</span>
-          </div>
+            ))}
+            {!others.length && (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {critical ? 'Không có cảnh báo nào khác.' : 'Không có cảnh báo đang mở.'}
+              </p>
+            )}
+            <Button asChild variant="link" className="h-auto p-0">
+              <Link to="/alerts">Xem tất cả</Link>
+            </Button>
+          </CardContent>
         </Card>
-        <Card title="Cảnh báo đang mở" className={styles.openAlerts}>
-          {others.slice(0, 5).map((alert) => (
-            <div className={styles.smallAlert} key={alert.alert_id}>
-              <div className="row between">
-                <Badge value={alert.severity} />
-                <span className="mono small muted">{dateTime(alert.created_at)}</span>
-              </div>
-              <p>{alert.alert_message}</p>
-              <span className="mono small muted">
-                {alert.alert_type} · {alert.device_code}
-              </span>
+
+        <Card className="order-3 lg:order-3">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <BellRing className="size-4 text-muted-foreground" />
+              Điều khiển nhanh
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FanControl />
+            <div className="flex items-center justify-between gap-2">
+              <strong className="text-sm">Còi báo động</strong>
+              <Badge variant={data.presentation.buzzer_sounding ? 'destructive' : 'secondary'}>
+                {data.presentation.buzzer_sounding ? 'Đang kêu' : 'Tắt'}
+              </Badge>
             </div>
-          ))}
-          {!others.length && (
-            <p className="muted">
-              {critical ? 'Không có cảnh báo nào khác.' : 'Không có cảnh báo đang mở.'}
+            <ActionButton
+              variant="outline"
+              disabled={viewer || !data.presentation.buzzer_sounding || !secDevice}
+              action={silenceBuzzer}
+              success="Đã gửi lệnh tắt còi."
+            >
+              Tắt còi
+            </ActionButton>
+            <p className="font-mono text-[11px] text-muted-foreground">
+              BUZZER_OFF · {MONITORING.securityCode}
             </p>
-          )}
-          <Link className={ui.link} to="/alerts">
-            Xem tất cả
-          </Link>
+          </CardContent>
         </Card>
-      </section>
+
+        <Card className="order-4 lg:order-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Thiết bị</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {data.devices.slice(0, 2).map((device) => (
+              <div key={device.device_id} className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <Link
+                    to={`/devices/${device.device_id}`}
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    {device.device_name}
+                  </Link>
+                  <Connection device={device} />
+                </div>
+                <p className="font-mono text-[11px] text-muted-foreground">{device.device_code}</p>
+                <Heartbeat device={device} />
+              </div>
+            ))}
+            <div className="space-y-2 border-t pt-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Chế độ ban đêm</span>
+                <Badge variant={envConfig?.night_mode_enabled ? 'default' : 'secondary'}>
+                  {envConfig?.night_mode_enabled ? 'Đang bật' : 'Đang tắt'}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Đèn LED</span>
+                <span className="text-sm font-medium text-destructive">
+                  {data.presentation.led}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
