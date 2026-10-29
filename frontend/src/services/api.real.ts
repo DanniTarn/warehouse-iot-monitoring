@@ -2,6 +2,7 @@ import type { ApiClient, DashboardData, HistoryQuery, HistoryRows } from './api'
 import { derivePresentation } from './dashboardView'
 import { HttpError, request } from './http'
 import type {
+  Actuator,
   Alert,
   AuditLog,
   Device,
@@ -91,11 +92,12 @@ export const realApi: ApiClient = {
   async dashboard(token) {
     const user = await realApi.me(token)
     const admin = user.role === 'ADMIN'
-    const [devices, telemetry, alerts, commands, warehouses, users, audit] = await Promise.all([
+    const [devices, telemetry, alerts, commands, actuators, warehouses, users, audit] = await Promise.all([
       request<Device[]>('/devices', { token }),
       loadTelemetry(token),
       request<Alert[]>('/alerts?limit=200', { token }),
       request<DeviceCommand[]>('/commands?limit=200', { token }),
+      request<Actuator[]>('/actuators', { token }),
       request<Warehouse[]>('/warehouses', { token }),
       admin ? request<User[]>('/users', { token }) : Promise.resolve<User[]>([]),
       admin ? realApi.audit(token) : Promise.resolve<AuditLog[]>([]),
@@ -107,6 +109,7 @@ export const realApi: ApiClient = {
       telemetry,
       alerts,
       commands,
+      actuators,
       warehouses,
       users,
       audit,
@@ -114,7 +117,7 @@ export const realApi: ApiClient = {
         newest(telemetry.map((row) => row.recorded_at)) ??
         newest(devices.map((device) => device.last_heartbeat)) ??
         new Date().toISOString(),
-      presentation: derivePresentation({ devices, configs, telemetry, alerts, commands }),
+      presentation: derivePresentation({ devices, configs, telemetry, alerts, commands, actuators }),
     }
     return data
   },

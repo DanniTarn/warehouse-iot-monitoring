@@ -55,6 +55,14 @@ export interface DeviceConfig {
   fan_mode: FanMode
   updated_at: string
 }
+export interface Actuator {
+  device_id: number
+  device_code: string
+  actuator_type: 'FAN' | 'BUZZER' | 'LED_RED' | string
+  state: boolean
+  updated_at: string
+}
+
 export interface Telemetry {
   telemetry_id: number
   device_id: number

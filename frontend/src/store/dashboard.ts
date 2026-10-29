@@ -186,7 +186,63 @@ export const useDashboard = create<DashboardState>((set) => ({
                   : config,
               )
             : data.configs
-          return { data: withPresentation({ ...data, commands, configs }) }
+          let actuators = data.actuators
+          if (command.status === 'ACKNOWLEDGED') {
+            const states: [string, boolean][] = []
+            if (command.command_type === 'FAN_ON') states.push(['FAN', true])
+            if (command.command_type === 'FAN_OFF') states.push(['FAN', false])
+            if (command.command_type === 'BUZZER_ON') {
+              states.push(['BUZZER', true], ['LED_RED', true])
+            }
+            if (command.command_type === 'BUZZER_OFF') {
+              states.push(['BUZZER', false], ['LED_RED', false])
+            }
+            if (states.length) {
+              const updated_at = command.acknowledged_at ?? new Date().toISOString()
+              actuators = data.actuators.map((item) => {
+                const next = states.find(
+                  ([type]) =>
+                    item.device_id === command.device_id && item.actuator_type === type,
+                )
+                return next ? { ...item, state: next[1], updated_at } : item
+              })
+              for (const [type, state] of states)
+                if (
+                  !actuators.some(
+                    (item) => item.device_id === command.device_id && item.actuator_type === type,
+                  )
+                )
+                  actuators = [
+                    ...actuators,
+                    {
+                      device_id: command.device_id,
+                      device_code: command.device_code,
+                      actuator_type: type,
+                      state,
+                      updated_at,
+                    },
+                  ]
+            }
+          }
+          return { data: withPresentation({ ...data, commands, configs, actuators }) }
+        }
+        case 'actuator_status': {
+          const status = change.data
+          if (!status) return state
+          const updated_at = new Date().toISOString()
+          const known = data.actuators.some(
+            (item) =>
+              item.device_id === status.device_id && item.actuator_type === status.actuator_type,
+          )
+          const actuators = known
+            ? data.actuators.map((item) =>
+                item.device_id === status.device_id &&
+                item.actuator_type === status.actuator_type
+                  ? { ...item, state: status.state, updated_at }
+                  : item,
+              )
+            : [...data.actuators, { ...status, updated_at }]
+          return { data: withPresentation({ ...data, actuators }) }
         }
         case 'device_saved':
           return {

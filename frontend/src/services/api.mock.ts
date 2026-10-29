@@ -2,6 +2,7 @@ import type { ApiClient, DashboardData } from './api'
 import { derivePresentation } from './dashboardView'
 import { ForbiddenError, HttpError } from './http'
 import type {
+  Actuator,
   Alert,
   ConfigPatch,
   Device,
@@ -229,11 +230,35 @@ const configs: DeviceConfig[] = devices.map((device) => ({
   fan_mode: 'AUTO',
   updated_at: snapshot,
 }))
+const actuators: Actuator[] = [
+  {
+    device_id: 1,
+    device_code: MONITORING.environmentCode,
+    actuator_type: 'FAN',
+    state: true,
+    updated_at: snapshot,
+  },
+  {
+    device_id: 2,
+    device_code: MONITORING.securityCode,
+    actuator_type: 'BUZZER',
+    state: true,
+    updated_at: snapshot,
+  },
+  {
+    device_id: 2,
+    device_code: MONITORING.securityCode,
+    actuator_type: 'LED_RED',
+    state: true,
+    updated_at: snapshot,
+  },
+]
 const data: DashboardData = {
   devices,
   users,
   alerts,
   commands,
+  actuators,
   telemetry,
   snapshot_at: snapshot,
   configs,
@@ -436,6 +461,29 @@ export const mockApi: ApiClient = {
       const config = findConfig(deviceId)
       config.fan_mode = type === 'FAN_ON' ? 'ON' : type === 'FAN_OFF' ? 'OFF' : 'AUTO'
       config.updated_at = sentAt
+    }
+    function setActuator(actuatorType: string, state: boolean) {
+      const existing = actuators.find(
+        (item) => item.device_id === deviceId && item.actuator_type === actuatorType,
+      )
+      if (existing) {
+        existing.state = state
+        existing.updated_at = sentAt
+        return
+      }
+      actuators.push({
+        device_id: deviceId,
+        device_code: device.device_code,
+        actuator_type: actuatorType,
+        state,
+        updated_at: sentAt,
+      })
+    }
+    if (type === 'FAN_ON') setActuator('FAN', true)
+    if (type === 'FAN_OFF') setActuator('FAN', false)
+    if (type === 'BUZZER_OFF') {
+      setActuator('BUZZER', false)
+      setActuator('LED_RED', false)
     }
     record(user, 'MANUAL_CONTROL', `${type} gửi tới ${device.device_code}`)
     return structuredClone(command)

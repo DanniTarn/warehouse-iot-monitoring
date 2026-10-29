@@ -62,7 +62,7 @@ export default function DeviceDetail() {
   const temperatureHigh = reading?.temperature != null && reading.temperature > temperatureThreshold
   const smokeThreshold = config?.smoke_gas_threshold ?? MONITORING.smoke.threshold
   const smokeHigh = reading?.smoke_gas_level != null && reading.smoke_gas_level > smokeThreshold
-  const buzzer = buzzerSounding(data.commands, device.device_id)
+  const buzzer = buzzerSounding(data.commands, device.device_id, data.actuators)
   const commands = data.commands.filter((command) => command.device_id === device.device_id)
   const sensors: [string, string][] = environment
     ? [
