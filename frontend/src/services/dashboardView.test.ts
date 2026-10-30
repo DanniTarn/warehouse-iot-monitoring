@@ -364,3 +364,54 @@ describe('derivePresentation fan state when a command left the window', () => {
     expect(state.fan_running).toBe(false)
   })
 })
+
+describe('reported actuator state', () => {
+  it('uses the fan relay state over remembered commands', () => {
+    const commands = [
+      command({
+        command_id: 1,
+        device_id: 1,
+        command_type: 'FAN_OFF',
+        status: 'ACKNOWLEDGED',
+        sent_at: at(10),
+      }),
+    ]
+    const actuators = [
+      {
+        device_id: 1,
+        device_code: 'NODE1_ENV',
+        actuator_type: 'FAN',
+        state: true,
+        updated_at: at(11),
+      },
+    ]
+    expect(
+      fanState(
+        { configs: [config(1, { fan_mode: 'OFF' })], telemetry: [], commands, actuators },
+        1,
+      ).running,
+    ).toBe(true)
+  })
+
+  it('uses the buzzer state over remembered commands', () => {
+    const commands = [
+      command({
+        command_id: 1,
+        device_id: 2,
+        command_type: 'BUZZER_ON',
+        status: 'ACKNOWLEDGED',
+        sent_at: at(10),
+      }),
+    ]
+    const actuators = [
+      {
+        device_id: 2,
+        device_code: 'NODE2_SEC',
+        actuator_type: 'BUZZER',
+        state: false,
+        updated_at: at(11),
+      },
+    ]
+    expect(buzzerSounding(commands, 2, actuators)).toBe(false)
+  })
+})

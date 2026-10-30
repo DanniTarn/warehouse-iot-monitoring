@@ -26,6 +26,7 @@ app.get('/health', async (req, res) => {
 
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/devices', require('./routes/devices'));
+app.use('/api/actuators', require('./routes/actuators'));
 app.use('/api/telemetry', require('./routes/telemetry'));
 app.use('/api/commands', require('./routes/commands'));
 app.use('/api/alerts', require('./routes/alerts'));

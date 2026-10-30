@@ -1,12 +1,12 @@
 import type { DashboardData } from './api'
 import { MONITORING } from './config'
-import type { DeviceCommand, DeviceConfig, Telemetry } from './types'
+import type { Actuator, DeviceCommand, DeviceConfig, Telemetry } from './types'
 
 type Presentation = DashboardData['presentation']
 export type PresentationInput = Pick<
   DashboardData,
   'devices' | 'configs' | 'telemetry' | 'alerts' | 'commands'
->
+> & { actuators?: Actuator[] }
 
 function isNewer(command: DeviceCommand, than: DeviceCommand) {
   const at = Date.parse(command.sent_at)
@@ -67,25 +67,43 @@ function fanMode(config: DeviceConfig | undefined): Presentation['fan_mode'] {
   return 'auto'
 }
 
-type FanInput = Pick<DashboardData, 'configs' | 'telemetry' | 'commands'>
+type FanInput = Pick<DashboardData, 'configs' | 'telemetry' | 'commands'> & {
+  actuators?: Actuator[]
+}
 
-export function fanState({ configs, telemetry, commands }: FanInput, deviceId: number | undefined) {
+export function fanState(
+  { configs, telemetry, commands, actuators = [] }: FanInput,
+  deviceId: number | undefined,
+) {
   const config = configs.find((item) => item.device_id === deviceId)
   const latest = latestAcknowledged(commands, deviceId, ['FAN_ON', 'FAN_OFF', 'FAN_AUTO'])
   const humidity = newestTelemetry(telemetry, deviceId)?.humidity ?? null
   const mode = fanMode(config)
+  const actuator = actuators.find(
+    (item) => item.device_id === deviceId && item.actuator_type === 'FAN',
+  )
   return {
     mode,
-    running: fanRunning(
-      latest,
-      humidity,
-      config?.humidity_threshold ?? MONITORING.humidityThreshold,
-      mode,
-    ),
+    running: actuator
+      ? actuator.state
+      : fanRunning(
+          latest,
+          humidity,
+          config?.humidity_threshold ?? MONITORING.humidityThreshold,
+          mode,
+        ),
   }
 }
 
-export function buzzerSounding(commands: DeviceCommand[], deviceId: number | undefined) {
+export function buzzerSounding(
+  commands: DeviceCommand[],
+  deviceId: number | undefined,
+  actuators: Actuator[] = [],
+) {
+  const actuator = actuators.find(
+    (item) => item.device_id === deviceId && item.actuator_type === 'BUZZER',
+  )
+  if (actuator) return actuator.state
   return (
     latestAcknowledged(commands, deviceId, ['BUZZER_ON', 'BUZZER_OFF'])?.command_type ===
     'BUZZER_ON'
@@ -98,10 +116,11 @@ export function derivePresentation({
   telemetry,
   alerts,
   commands,
+  actuators = [],
 }: PresentationInput): Presentation {
   const envDevice = devices.find((device) => device.device_code.endsWith('_ENV'))
   const secDevice = devices.find((device) => device.device_code.endsWith('_SEC'))
-  const fan = fanState({ configs, telemetry, commands }, envDevice?.device_id)
+  const fan = fanState({ configs, telemetry, commands, actuators }, envDevice?.device_id)
   const securityEvents = (
     secDevice
       ? telemetry.filter(
@@ -137,7 +156,7 @@ export function derivePresentation({
   return {
     fan_mode: fan.mode,
     fan_running: fan.running,
-    buzzer_sounding: buzzerSounding(commands, secDevice?.device_id),
+    buzzer_sounding: buzzerSounding(commands, secDevice?.device_id, actuators),
     led: alerts.some((alert) => alert.severity === 'CRITICAL' && !alert.is_acknowledged)
       ? 'Đỏ nhấp nháy'
       : 'Tắt',

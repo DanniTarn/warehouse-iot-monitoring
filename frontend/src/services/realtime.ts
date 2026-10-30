@@ -1,4 +1,4 @@
-import type { Alert, DeviceCommand, LifecycleStatus, Telemetry } from './types'
+import type { Actuator, Alert, DeviceCommand, LifecycleStatus, Telemetry } from './types'
 
 export interface DeviceStatusEvent {
   device_id: number
@@ -13,6 +13,14 @@ export type RealtimeEvent =
   | { type: 'alert_created'; data: Alert | null }
   | { type: 'alert_updated'; data: Alert | null }
   | { type: 'command_status'; data: DeviceCommand | null }
+  | { type: 'actuator_status'; data: ActuatorStatusEvent | null }
+
+export interface ActuatorStatusEvent {
+  device_id: number
+  device_code: string
+  actuator_type: Actuator['actuator_type']
+  state: boolean
+}
 
 export type RealtimeState = 'live' | 'reconnecting'
 
@@ -30,6 +38,7 @@ const eventTypes = [
   'alert_created',
   'alert_updated',
   'command_status',
+  'actuator_status',
 ]
 
 function isEventType(value: unknown): value is RealtimeEvent['type'] {
