@@ -27,12 +27,24 @@ function planRules(code, config, current, previous, atNight) {
       }
     }
   }
-  if (code.endsWith('_SEC') && config.night_mode_enabled && atNight) {
+  if (code.endsWith('_SEC') && config.night_mode_enabled) {
     const doorOpened = current.door_status === true && before.door_status !== true;
     const motion = current.motion_detected === true && before.motion_detected !== true;
-    if (doorOpened) alerts.push({ type: 'DOOR_BREACH', severity: 'CRITICAL', message: 'Cửa kho bị mở ngoài giờ làm việc.' });
-    if (motion) alerts.push({ type: 'MOTION_INTRUSION', severity: 'CRITICAL', message: 'Phát hiện chuyển động trong kho ngoài giờ làm việc.' });
-    if (doorOpened || motion) commands.push({ code, type: 'BUZZER_ON' });
+    if (doorOpened) alerts.push({
+      type: 'DOOR_BREACH',
+      severity: atNight ? 'CRITICAL' : 'WARNING',
+      message: atNight
+        ? 'Cửa kho bị mở ngoài giờ làm việc.'
+        : 'Cửa kho đang mở trong giờ làm việc.'
+    });
+    if (motion) alerts.push({
+      type: 'MOTION_INTRUSION',
+      severity: atNight ? 'CRITICAL' : 'WARNING',
+      message: atNight
+        ? 'Phát hiện chuyển động trong kho ngoài giờ làm việc.'
+        : 'Phát hiện chuyển động trong kho trong giờ làm việc.'
+    });
+    if (atNight && (doorOpened || motion)) commands.push({ code, type: 'BUZZER_ON' });
   }
   return { alerts, commands };
 }

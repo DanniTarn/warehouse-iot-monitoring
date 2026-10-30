@@ -3,6 +3,7 @@ import { derivePresentation } from './dashboardView'
 import { HttpError, request } from './http'
 import type {
   Actuator,
+  SystemState,
   Alert,
   AuditLog,
   Device,
@@ -92,12 +93,13 @@ export const realApi: ApiClient = {
   async dashboard(token) {
     const user = await realApi.me(token)
     const admin = user.role === 'ADMIN'
-    const [devices, telemetry, alerts, commands, actuators, warehouses, users, audit] = await Promise.all([
+    const [devices, telemetry, alerts, commands, actuators, system, warehouses, users, audit] = await Promise.all([
       request<Device[]>('/devices', { token }),
       loadTelemetry(token),
       request<Alert[]>('/alerts?limit=200', { token }),
       request<DeviceCommand[]>('/commands?limit=200', { token }),
       request<Actuator[]>('/actuators', { token }),
+      request<SystemState>('/system', { token }),
       request<Warehouse[]>('/warehouses', { token }),
       admin ? request<User[]>('/users', { token }) : Promise.resolve<User[]>([]),
       admin ? realApi.audit(token) : Promise.resolve<AuditLog[]>([]),
@@ -110,6 +112,7 @@ export const realApi: ApiClient = {
       alerts,
       commands,
       actuators,
+      system,
       warehouses,
       users,
       audit,

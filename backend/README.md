@@ -10,7 +10,7 @@ Backend dành cho Người 1, viết bằng Node.js, Express, PostgreSQL, MongoD
 - MQTT: dữ liệu Node 1 (nhiệt độ, độ ẩm, khói), Node 2 (cửa, chuyển động), heartbeat và ACK.
 - PostgreSQL: lưu tài khoản, thiết bị, cấu hình, lệnh điều khiển, audit log và bản ghi telemetry/cảnh báo phục vụ hợp đồng Frontend.
 - MongoDB: lưu collection `telemetries`, `alerts`; tự đồng bộ thông qua hàng đợi PostgreSQL với cơ chế retry khi MongoDB tạm gián đoạn.
-- Rule engine: độ ẩm cao bật quạt trong chế độ AUTO; vượt ngưỡng khói cảnh báo CRITICAL, gửi còi/LED đỏ Node 2; phát hiện cửa mở hoặc chuyển động ban đêm.
+- Rule engine: độ ẩm cao bật quạt trong chế độ AUTO; vượt ngưỡng khói cảnh báo CRITICAL, gửi còi/LED đỏ Node 2; phát hiện cửa mở hoặc chuyển động mọi lúc, WARNING trong giờ làm việc và CRITICAL ngoài giờ 20:00–06:00. Còi chỉ kêu ngoài giờ.
 - Phát hiện mất kết nối sau 90 giây; điều khiển PENDING → SENT → ACKNOWLEDGED / FAILED, timeout 10 giây.
 - WebSocket `/ws` gửi `telemetry`, `device_status`, `alert_created`, `alert_updated`, `command_status`.
 

@@ -202,10 +202,12 @@ export default function Overview() {
             sec?.door_status == null
               ? 'Chưa có dữ liệu'
               : sec.door_status
-                ? 'Ngoài giờ giới nghiêm'
+                ? data.system.night
+                  ? 'Ngoài giờ giới nghiêm'
+                  : 'Cửa mở trong giờ làm việc'
                 : 'Đóng'
           }
-          tone={sec?.door_status ? 'critical' : 'good'}
+          tone={sec?.door_status ? (data.system.night ? 'critical' : 'warning') : 'good'}
         />
         <StatCard
           label="Chuyển động"

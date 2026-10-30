@@ -259,6 +259,13 @@ const data: DashboardData = {
   alerts,
   commands,
   actuators,
+  system: {
+    night: false,
+    night_start_hour: 20,
+    night_end_hour: 6,
+    timezone: 'Asia/Ho_Chi_Minh',
+    server_time: snapshot,
+  },
   telemetry,
   snapshot_at: snapshot,
   configs,

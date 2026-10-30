@@ -104,6 +104,13 @@ function dashboard(overrides: Partial<DashboardData> = {}): DashboardData {
     alerts: [alert(1)],
     commands: [command(1)],
     actuators: [],
+    system: {
+      night: false,
+      night_start_hour: 20,
+      night_end_hour: 6,
+      timezone: 'Asia/Ho_Chi_Minh',
+      server_time: at(20),
+    },
     audit: [],
     users: [],
     warehouses: [],
