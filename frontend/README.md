@@ -1,6 +1,8 @@
 # Giám sát kho · Frontend
 
-Milestone **15/10/2026**: all nine supplied screen variants, typed mock reads, demonstration sessions and role guards. The implementation uses the team's handoff in `../docs/frontend-handoff/`. The `api` source now reads the running Express backend over REST and WebSocket.
+Vite, React and TypeScript single-page app. The interface is built on Tailwind CSS v4 with shadcn components in `src/components/ui`, plus app-level pieces in `src/components/app`. Charts use Recharts. State is Zustand; routing is React Router. The design layer was rebuilt on shadcn while the data layer in `src/services` and `src/store` stayed unchanged.
+
+Milestone **15/10/2026** supplied the nine screen variants and role guards. The `api` source reads the running Express backend over REST and WebSocket; `mock` remains for tests and offline demos.
 
 ## Run
 

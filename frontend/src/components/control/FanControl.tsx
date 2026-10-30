@@ -1,12 +1,16 @@
 import { useState } from 'react'
-import { useAuth } from '../../store/auth'
-import { useDashboard } from '../../store/dashboard'
-import { useActions } from '../../store/actions'
-import { MONITORING } from '../../services/config'
-import { fanState } from '../../services/dashboardView'
-import type { ManualCommandType } from '../../services/types'
-import { Badge, Notice } from '../common/UI'
-import styles from '../common/UI.module.css'
+import { Fan } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Notice } from '@/components/app/kit'
+import { MONITORING } from '@/services/config'
+import { fanState } from '@/services/dashboardView'
+import type { ManualCommandType } from '@/services/types'
+import { useActions } from '@/store/actions'
+import { useAuth } from '@/store/auth'
+import { useDashboard } from '@/store/dashboard'
+import { cn } from '@/lib/utils'
+
 export function FanControl({
   detailed = false,
   deviceId,
@@ -46,29 +50,44 @@ export function FanControl({
     }
   }
   return (
-    <div className="stack">
-      <div className="row between">
-        <strong>Quạt hút · Relay 5V</strong>
-        <Badge tone={running ? 'good' : 'neutral'}>{running ? 'Đang chạy' : 'Đang tắt'}</Badge>
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-2 text-sm font-medium">
+          <Fan className="size-4 text-muted-foreground" />
+          Quạt hút · Relay 5V
+        </span>
+        <Badge variant={running ? 'default' : 'secondary'}>
+          {running ? 'Đang chạy' : 'Đang tắt'}
+        </Badge>
       </div>
-      <div className={styles.segmented} role="group" aria-label="Chế độ quạt">
+      <div
+        className="grid grid-cols-3 gap-1 rounded-lg border bg-muted/40 p-1"
+        role="group"
+        aria-label="Chế độ quạt"
+      >
         {options.map(([command, key, label]) => (
-          <button
+          <Button
             key={command}
+            size="sm"
+            variant="ghost"
             aria-pressed={mode === key}
             aria-busy={pending === command}
             disabled={viewer || pending !== ''}
             onClick={() => void send(command)}
+            className={cn(
+              'h-8',
+              mode === key && 'bg-card text-foreground shadow-xs hover:bg-card',
+            )}
           >
             {label}
-          </button>
+          </Button>
         ))}
       </div>
-      <p className="small secondary">Quy tắc: độ ẩm &gt; 65 % thì bật quạt.</p>
+      <p className="text-xs text-muted-foreground">Quy tắc: độ ẩm &gt; 65 % thì bật quạt.</p>
       {error && <Notice error>{error}</Notice>}
       {pending && <Notice>Đang gửi lệnh {pending}…</Notice>}
       {viewer && (
-        <p className="small secondary">
+        <p className="text-xs text-muted-foreground">
           Tài khoản Viewer chỉ có quyền xem. Không thể điều khiển thiết bị.
         </p>
       )}

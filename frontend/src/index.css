@@ -1,0 +1,93 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: 'Be Vietnam Pro', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  --radius: 0.65rem;
+  --background: oklch(0.984 0.002 250);
+  --foreground: oklch(0.2 0.02 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.02 255);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.02 255);
+  --primary: oklch(0.54 0.18 255);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.962 0.004 250);
+  --secondary-foreground: oklch(0.3 0.02 255);
+  --muted: oklch(0.962 0.004 250);
+  --muted-foreground: oklch(0.52 0.014 255);
+  --accent: oklch(0.95 0.018 255);
+  --accent-foreground: oklch(0.32 0.06 255);
+  --destructive: oklch(0.55 0.2 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.912 0.005 250);
+  --input: oklch(0.9 0.006 250);
+  --ring: oklch(0.54 0.18 255);
+  --success: oklch(0.93 0.05 152);
+  --success-foreground: oklch(0.38 0.11 152);
+  --warning: oklch(0.945 0.07 87);
+  --warning-foreground: oklch(0.44 0.12 72);
+  --info: oklch(0.94 0.035 250);
+  --info-foreground: oklch(0.42 0.12 255);
+  --chart-temp: oklch(0.66 0.17 45);
+  --chart-humidity: oklch(0.56 0.16 250);
+  --chart-smoke: oklch(0.55 0.17 300);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-synthesis-weight: none;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+}
