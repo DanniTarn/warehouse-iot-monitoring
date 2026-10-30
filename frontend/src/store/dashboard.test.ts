@@ -31,6 +31,8 @@ function config(device_id: number): DeviceConfig {
     temperature_threshold: 50,
     telemetry_interval: 5,
     night_mode_enabled: true,
+    curfew_start_hour: 20,
+    curfew_end_hour: 6,
     fan_mode: 'AUTO',
     updated_at: at(0),
   }

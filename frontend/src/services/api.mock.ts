@@ -227,6 +227,8 @@ const configs: DeviceConfig[] = devices.map((device) => ({
   temperature_threshold: 50,
   telemetry_interval: 5,
   night_mode_enabled: true,
+  curfew_start_hour: 20,
+  curfew_end_hour: 6,
   fan_mode: 'AUTO',
   updated_at: snapshot,
 }))
@@ -325,6 +327,8 @@ const CONFIG_RANGES = {
   humidity_threshold: ['Ngưỡng độ ẩm', 0, 100],
   smoke_gas_threshold: ['Ngưỡng khói', 0, 100000],
   telemetry_interval: ['Chu kỳ dữ liệu', 1, 3600],
+  curfew_start_hour: ['Giờ bắt đầu giới nghiêm', 0, 23],
+  curfew_end_hour: ['Giờ kết thúc giới nghiêm', 0, 23],
 } as const
 const wait = () => new Promise((resolve) => setTimeout(resolve, 180))
 function sessionUser(token: string) {
@@ -353,6 +357,8 @@ function defaultConfig(deviceId: number, code: string): DeviceConfig {
     temperature_threshold: 50,
     telemetry_interval: 5,
     night_mode_enabled: true,
+    curfew_start_hour: 20,
+    curfew_end_hour: 6,
     fan_mode: 'AUTO',
     updated_at: new Date().toISOString(),
   }
@@ -589,6 +595,8 @@ export const mockApi: ApiClient = {
       'smoke_gas_threshold',
       'telemetry_interval',
       'night_mode_enabled',
+      'curfew_start_hour',
+      'curfew_end_hour',
     ]
     if (!fields.some((field) => patch[field] !== undefined)) {
       throw new HttpError(400, 'Chưa có cấu hình cần thay đổi.')
@@ -602,6 +610,12 @@ export const mockApi: ApiClient = {
     if (patch.telemetry_interval !== undefined && !Number.isInteger(patch.telemetry_interval)) {
       throw new HttpError(400, 'Chu kỳ dữ liệu phải là số nguyên dương.')
     }
+    for (const field of ['curfew_start_hour', 'curfew_end_hour'] as const) {
+      const value = patch[field]
+      if (value !== undefined && !Number.isInteger(value)) {
+        throw new HttpError(400, 'Giờ giới nghiêm phải là số nguyên từ 0 đến 23.')
+      }
+    }
     if (patch.temperature_threshold !== undefined) {
       config.temperature_threshold = patch.temperature_threshold
     }
@@ -613,6 +627,8 @@ export const mockApi: ApiClient = {
     if (patch.night_mode_enabled !== undefined) {
       config.night_mode_enabled = patch.night_mode_enabled
     }
+    if (patch.curfew_start_hour !== undefined) config.curfew_start_hour = patch.curfew_start_hour
+    if (patch.curfew_end_hour !== undefined) config.curfew_end_hour = patch.curfew_end_hour
     config.updated_at = new Date().toISOString()
     record(user, 'UPDATE_CONFIG', `device_id ${deviceId}`)
     return structuredClone(config)

@@ -33,6 +33,10 @@ export function ConfigForm({
       patch.telemetry_interval = form.telemetry_interval
     if (form.night_mode_enabled !== config.night_mode_enabled)
       patch.night_mode_enabled = form.night_mode_enabled
+    if (form.curfew_start_hour !== config.curfew_start_hour)
+      patch.curfew_start_hour = form.curfew_start_hour
+    if (form.curfew_end_hour !== config.curfew_end_hour)
+      patch.curfew_end_hour = form.curfew_end_hour
     return patch
   }
   const dirty = Object.keys(changes()).length > 0
@@ -99,6 +103,38 @@ export function ConfigForm({
                 </Field>
               </>
             )}
+            {!environment && (
+              <>
+                <Field label="Giờ bắt đầu giới nghiêm" id="curfew-start" hint="curfew_start_hour">
+                  <Input
+                    type="number"
+                    id="curfew-start"
+                    min="0"
+                    max="23"
+                    step="1"
+                    value={form.curfew_start_hour}
+                    onChange={(e) =>
+                      setForm({ ...form, curfew_start_hour: Number(e.target.value) })
+                    }
+                    disabled={viewer}
+                    required
+                  />
+                </Field>
+                <Field label="Giờ kết thúc giới nghiêm" id="curfew-end" hint="curfew_end_hour">
+                  <Input
+                    type="number"
+                    id="curfew-end"
+                    min="0"
+                    max="23"
+                    step="1"
+                    value={form.curfew_end_hour}
+                    onChange={(e) => setForm({ ...form, curfew_end_hour: Number(e.target.value) })}
+                    disabled={viewer}
+                    required
+                  />
+                </Field>
+              </>
+            )}
             <Field label="Chu kỳ gửi dữ liệu (giây)" id="interval" hint="telemetry_interval">
               <Input
                 type="number"
@@ -113,16 +149,18 @@ export function ConfigForm({
               />
             </Field>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={form.night_mode_enabled}
-              onCheckedChange={(checked) =>
-                setForm({ ...form, night_mode_enabled: checked === true })
-              }
-              disabled={viewer}
-            />
-            Bật chế độ ban đêm
-          </label>
+          {!environment && (
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={form.night_mode_enabled}
+                onCheckedChange={(checked) =>
+                  setForm({ ...form, night_mode_enabled: checked === true })
+                }
+                disabled={viewer}
+              />
+              Bật cảnh giới an ninh
+            </label>
+          )}
           {viewer ? (
             <p className="text-xs text-muted-foreground">
               Tài khoản Viewer chỉ có quyền xem, không thể thay đổi cấu hình.
