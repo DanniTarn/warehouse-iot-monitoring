@@ -58,7 +58,9 @@ export default function DeviceDetail() {
   const environment = kind === 'environment'
   const night = isNight(
     config?.curfew_start_hour ?? 20,
+    config?.curfew_start_minute ?? 0,
     config?.curfew_end_hour ?? 6,
+    config?.curfew_end_minute ?? 0,
     data.system.timezone,
   )
   const humidityThreshold = config?.humidity_threshold ?? MONITORING.humidityThreshold
