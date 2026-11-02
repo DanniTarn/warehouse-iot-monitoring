@@ -229,6 +229,7 @@ const configs: DeviceConfig[] = devices.map((device) => ({
   night_mode_enabled: true,
   curfew_start_hour: 20,
   curfew_end_hour: 6,
+  guard_mode: 'AUTO',
   fan_mode: 'AUTO',
   updated_at: snapshot,
 }))
@@ -359,6 +360,7 @@ function defaultConfig(deviceId: number, code: string): DeviceConfig {
     night_mode_enabled: true,
     curfew_start_hour: 20,
     curfew_end_hour: 6,
+    guard_mode: 'AUTO',
     fan_mode: 'AUTO',
     updated_at: new Date().toISOString(),
   }
@@ -597,6 +599,7 @@ export const mockApi: ApiClient = {
       'night_mode_enabled',
       'curfew_start_hour',
       'curfew_end_hour',
+      'guard_mode',
     ]
     if (!fields.some((field) => patch[field] !== undefined)) {
       throw new HttpError(400, 'Chưa có cấu hình cần thay đổi.')
@@ -629,6 +632,12 @@ export const mockApi: ApiClient = {
     }
     if (patch.curfew_start_hour !== undefined) config.curfew_start_hour = patch.curfew_start_hour
     if (patch.curfew_end_hour !== undefined) config.curfew_end_hour = patch.curfew_end_hour
+    if (patch.guard_mode !== undefined) {
+      if (!['AUTO', 'ON', 'OFF'].includes(patch.guard_mode)) {
+        throw new HttpError(400, 'Chế độ cảnh giới không hợp lệ.')
+      }
+      config.guard_mode = patch.guard_mode
+    }
     config.updated_at = new Date().toISOString()
     record(user, 'UPDATE_CONFIG', `device_id ${deviceId}`)
     return structuredClone(config)

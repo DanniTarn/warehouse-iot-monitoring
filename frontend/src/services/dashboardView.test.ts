@@ -36,6 +36,7 @@ function config(device_id: number, overrides: Partial<DeviceConfig> = {}): Devic
     night_mode_enabled: true,
     curfew_start_hour: 20,
     curfew_end_hour: 6,
+    guard_mode: 'AUTO',
     fan_mode: 'AUTO',
     updated_at: at(0),
     ...overrides,

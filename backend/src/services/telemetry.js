@@ -1,7 +1,7 @@
 const { pool } = require('../config/db');
 const { env } = require('../config/env');
 const { deviceByCode, deviceById } = require('./store');
-const { mapTelemetry, nightTime } = require('../utils/data');
+const { mapTelemetry, guardArmed } = require('../utils/data');
 const { broadcast } = require('./realtime');
 const { evaluateRules } = require('./rules');
 const { deviceStates } = require('../utils/firmwareProtocol');
@@ -40,13 +40,13 @@ async function receiveHeartbeat(code) {
   if (code.endsWith('_SEC')) {
     try {
       const cfg = await pool.query(
-        'SELECT night_mode_enabled,curfew_start_hour,curfew_end_hour FROM device_configs WHERE device_id=$1',
+        'SELECT guard_mode,night_mode_enabled,curfew_start_hour,curfew_end_hour FROM device_configs WHERE device_id=$1',
         [device.device_id]
       );
       if (cfg.rowCount) {
         const config = cfg.rows[0];
-        const night = nightTime(new Date(), env.nightTimezone, config.curfew_start_hour, config.curfew_end_hour);
-        await syncGuardMode(device.device_id, code, config.night_mode_enabled && night);
+        const armed = guardArmed(config, new Date(), env.nightTimezone, env.nightStartHour, env.nightEndHour);
+        await syncGuardMode(device.device_id, code, armed);
       }
     } catch (error) {
       console.error('Không đồng bộ được chế độ cảnh giới với Node 2:', error.message);

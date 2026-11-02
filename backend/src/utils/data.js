@@ -38,4 +38,12 @@ function nightTime(now = new Date(), timezone = env.nightTimezone, start = env.n
   return start === end || (start > end ? hour >= start || hour < end : hour >= start && hour < end);
 }
 
-module.exports = { isOnline, deviceView, toBoolean, mapTelemetry, nightTime };
+function guardArmed(config, now, timezone, fallbackStart, fallbackEnd) {
+  if (config?.guard_mode === 'ON') return true;
+  if (config?.guard_mode === 'OFF') return false;
+  const start = Number.isInteger(config?.curfew_start_hour) ? config.curfew_start_hour : fallbackStart;
+  const end = Number.isInteger(config?.curfew_end_hour) ? config.curfew_end_hour : fallbackEnd;
+  return nightTime(now, timezone, start, end);
+}
+
+module.exports = { isOnline, deviceView, toBoolean, mapTelemetry, nightTime, guardArmed };

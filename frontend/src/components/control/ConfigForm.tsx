@@ -2,11 +2,12 @@ import { useState, type FormEvent } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Field, Notice } from '@/components/app/kit'
+import type { GuardMode } from '@/services/types'
 import type { ConfigPatch, DeviceConfig } from '@/services/types'
 import { useActions } from '@/store/actions'
 import { useAuth } from '@/store/auth'
+import { cn } from '@/lib/utils'
 
 export function ConfigForm({
   config,
@@ -37,6 +38,7 @@ export function ConfigForm({
       patch.curfew_start_hour = form.curfew_start_hour
     if (form.curfew_end_hour !== config.curfew_end_hour)
       patch.curfew_end_hour = form.curfew_end_hour
+    if (form.guard_mode !== config.guard_mode) patch.guard_mode = form.guard_mode
     return patch
   }
   const dirty = Object.keys(changes()).length > 0
@@ -150,16 +152,42 @@ export function ConfigForm({
             </Field>
           </div>
           {!environment && (
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={form.night_mode_enabled}
-                onCheckedChange={(checked) =>
-                  setForm({ ...form, night_mode_enabled: checked === true })
-                }
-                disabled={viewer}
-              />
-              Bật cảnh giới an ninh
-            </label>
+            <div className="space-y-1.5">
+              <span className="text-sm font-medium">Chế độ cảnh giới</span>
+              <div
+                className="grid grid-cols-3 gap-1 rounded-lg border bg-muted/40 p-1"
+                role="group"
+                aria-label="Chế độ cảnh giới"
+              >
+                {(
+                  [
+                    ['AUTO', 'Tự động'],
+                    ['ON', 'Bật'],
+                    ['OFF', 'Tắt'],
+                  ] as [GuardMode, string][]
+                ).map(([value, label]) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    aria-pressed={form.guard_mode === value}
+                    disabled={viewer}
+                    onClick={() => setForm({ ...form, guard_mode: value })}
+                    className={cn(
+                      'h-8',
+                      form.guard_mode === value &&
+                        'bg-card text-foreground shadow-xs hover:bg-card',
+                    )}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Tự động bật trong giờ giới nghiêm. Bật hoặc Tắt ghi đè lịch.
+              </p>
+            </div>
           )}
           {viewer ? (
             <p className="text-xs text-muted-foreground">
