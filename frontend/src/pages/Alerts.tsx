@@ -4,14 +4,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { PageHeader } from '@/components/app/page-header'
 import { ActionButton, SeverityBadge, ToneBadge } from '@/components/app/kit'
+import { NativeSelect } from '@/components/app/native-select'
 import { dateTime } from '@/services/format'
 import { useActions } from '@/store/actions'
 import { useAuth } from '@/store/auth'
 import { useDashboard } from '@/store/dashboard'
 import { cn } from '@/lib/utils'
-
-const selectClass =
-  'h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50'
 
 export default function Alerts() {
   const data = useDashboard((s) => s.data)!
@@ -63,9 +61,8 @@ export default function Alerts() {
       <div className="grid gap-3 rounded-xl border bg-card p-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="severity">Mức độ</Label>
-          <select
+          <NativeSelect
             id="severity"
-            className={selectClass}
             value={severity}
             onChange={(e) => setSeverity(e.target.value)}
           >
@@ -73,13 +70,12 @@ export default function Alerts() {
             {['CRITICAL', 'WARNING', 'INFO'].map((value) => (
               <option key={value}>{value}</option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="alert-device">Thiết bị</Label>
-          <select
+          <NativeSelect
             id="alert-device"
-            className={selectClass}
             value={device}
             onChange={(e) => setDevice(e.target.value)}
           >
@@ -89,7 +85,7 @@ export default function Alerts() {
                 {d.device_code}
               </option>
             ))}
-          </select>
+          </NativeSelect>
         </div>
       </div>
 
