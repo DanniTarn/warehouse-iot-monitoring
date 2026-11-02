@@ -15,7 +15,7 @@ import {
 import { FanControl } from '@/components/control/FanControl'
 import { SensorChart } from '@/components/charts/SensorChart'
 import { MONITORING } from '@/services/config'
-import { dateTime, number } from '@/services/format'
+import { dateTime, isNight, number } from '@/services/format'
 import { useActions } from '@/store/actions'
 import { useAuth } from '@/store/auth'
 import { useDashboard } from '@/store/dashboard'
@@ -34,6 +34,12 @@ export default function Overview() {
     (device) => device.device_code === MONITORING.securityCode,
   )
   const envConfig = data.configs.find((config) => config.device_id === envDevice?.device_id)
+  const secConfig = data.configs.find((config) => config.device_id === secDevice?.device_id)
+  const night = isNight(
+    secConfig?.curfew_start_hour ?? 20,
+    secConfig?.curfew_end_hour ?? 6,
+    data.system.timezone,
+  )
   const env = data.telemetry.find((row) => row.device_code === MONITORING.environmentCode)
   const sec = data.telemetry.find((row) => row.device_code === MONITORING.securityCode)
   const open = data.alerts.filter((alert) => !alert.is_acknowledged)
@@ -202,12 +208,12 @@ export default function Overview() {
             sec?.door_status == null
               ? 'Chưa có dữ liệu'
               : sec.door_status
-                ? data.system.night
+                ? night
                   ? 'Ngoài giờ giới nghiêm'
                   : 'Cửa mở trong giờ làm việc'
                 : 'Đóng'
           }
-          tone={sec?.door_status ? (data.system.night ? 'critical' : 'warning') : 'good'}
+          tone={sec?.door_status ? (night ? 'critical' : 'warning') : 'good'}
         />
         <StatCard
           label="Chuyển động"

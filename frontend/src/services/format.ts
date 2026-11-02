@@ -35,3 +35,19 @@ export function heartbeat(value: string | null, now = Date.now()) {
   if (seconds < 3600) return `Heartbeat ${Math.floor(seconds / 60)} phút trước`
   return `Heartbeat ${Math.floor(seconds / 3600)} giờ trước`
 }
+
+export function isNight(
+  start: number,
+  end: number,
+  timezone: string,
+  now = new Date(),
+) {
+  const hour = Number(
+    new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      hourCycle: 'h23',
+      timeZone: timezone,
+    }).format(now),
+  )
+  return start === end || (start > end ? hour >= start || hour < end : hour >= start && hour < end)
+}

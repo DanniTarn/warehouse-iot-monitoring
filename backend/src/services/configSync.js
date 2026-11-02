@@ -12,4 +12,10 @@ async function syncThresholds(deviceId, code) {
   return true;
 }
 
-module.exports = { syncThresholds };
+async function syncGuardMode(deviceId, code, enabled) {
+  if (!code.endsWith('_SEC') || !mqtt.isConnected()) return false;
+  await mqtt.publish(code, { guard_mode: enabled ? 'on' : 'off' });
+  return true;
+}
+
+module.exports = { syncThresholds, syncGuardMode };
