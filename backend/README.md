@@ -11,7 +11,7 @@ Backend dành cho Người 1, viết bằng Node.js, Express, PostgreSQL, MongoD
 - PostgreSQL: lưu tài khoản, thiết bị, cấu hình, lệnh điều khiển, audit log và bản ghi telemetry/cảnh báo phục vụ hợp đồng Frontend.
 - MongoDB: lưu collection `telemetries`, `alerts`; tự đồng bộ thông qua hàng đợi PostgreSQL với cơ chế retry khi MongoDB tạm gián đoạn.
 - Rule engine: độ ẩm cao bật quạt trong chế độ AUTO; vượt ngưỡng khói cảnh báo CRITICAL, gửi còi/LED đỏ Node 2; phát hiện cửa mở hoặc chuyển động mọi lúc, WARNING trong giờ làm việc và CRITICAL ngoài giờ giới nghiêm của thiết bị. Backend gửi `guard_mode on/off` xuống Node 2 theo giờ này, mỗi lần heartbeat và mỗi lần lưu cấu hình.
-- Phát hiện mất kết nối sau 90 giây; điều khiển PENDING → SENT → ACKNOWLEDGED / FAILED, timeout 10 giây.
+- Phát hiện mất kết nối sau 30 giây; điều khiển PENDING → SENT → ACKNOWLEDGED / FAILED, timeout 10 giây.
 - WebSocket `/ws` gửi `telemetry`, `device_status`, `alert_created`, `alert_updated`, `command_status`.
 
 ## 2. Chạy bằng Docker với dự án nhóm
@@ -78,11 +78,13 @@ Sửa `.env` trước khi chạy; điền `DATABASE_URL`, `MONGO_URI` và `JWT_S
 | POST | `/api/devices/:id/token` | ADMIN |
 | GET | `/api/devices/:id/config` | Đã đăng nhập |
 | PUT | `/api/devices/:id/config` | ADMIN, OPERATOR |
+| GET | `/api/actuators` | Đã đăng nhập |
+| GET | `/api/system` | Đã đăng nhập |
 | GET | `/api/telemetry` | Đã đăng nhập |
 | GET | `/api/telemetry/latest` | Đã đăng nhập |
 | GET | `/api/telemetry/archive` | Đã đăng nhập, truy vấn MongoDB |
 | GET | `/api/commands` | Đã đăng nhập |
-| POST | `/api/devices/:id/commands` | ADMIN, OPERATOR |
+| POST | `/api/commands/device/:id` | ADMIN, OPERATOR |
 | GET | `/api/alerts` | Đã đăng nhập |
 | GET | `/api/alerts/archive` | Đã đăng nhập, truy vấn MongoDB |
 | POST | `/api/alerts/:id/acknowledge` | ADMIN, OPERATOR |
@@ -152,9 +154,9 @@ npm run check
 npm test
 ```
 
-Có test cho mapping cảm biến, MQTT topic, tính online, giờ ban đêm, xác thực input, luật độ ẩm, quạt, khói, còi/LED và xâm nhập. Cần chạy kiểm thử tích hợp trên PostgreSQL + MQTT Broker thật với mô phỏng ESP32 hoặc phần cứng để nghiệm thu API và trạng thái lệnh.
+Có 26 test cho mapping cảm biến, MQTT topic, tính online, giờ ban đêm, xác thực input, luật độ ẩm, quạt, khói, còi/LED và xâm nhập. Cần chạy kiểm thử tích hợp trên PostgreSQL + MQTT Broker thật với mô phỏng ESP32 hoặc phần cứng để nghiệm thu API và trạng thái lệnh.
 
-Frontend nhóm hiện là phiên bản mock; Người 3 vẫn cần bổ sung `api.real.ts`, `realtime.ts` và chuyển `VITE_DATA_SOURCE` sang `api` để sử dụng Backend này. Không chỉnh sửa Frontend trong gói bàn giao cho Người 1. Các quy ước chưa được firmware xác nhận: payload ACK, lệnh `LED_RED`, đơn vị khói MQ-2 và giờ chế độ đêm. Cần thống nhất với Người 2 trước khi gắn phần cứng thật.
+Frontend đã được tích hợp: `VITE_DATA_SOURCE=api` đọc trực tiếp backend này qua REST và WebSocket, gồm cả điều khiển, cấu hình và cảnh báo. Xem [README gốc](../README.md) và [kiến trúc](../docs/architecture.md). Các quy ước firmware cần thống nhất khi thay bo: payload ACK, lệnh `LED_RED`, đơn vị khói MQ-2 và cách tính giờ giới nghiêm.
 
 ## 8. Sử dụng MongoDB và kiểm tra đồng bộ
 
