@@ -306,17 +306,19 @@ export default function DeviceDetail() {
                       {buzzer ? 'Đang kêu' : 'Tắt'}
                     </Badge>
                   </div>
-                  <ActionButton
-                    variant="outline"
-                    disabled={role === 'VIEWER' || !buzzer}
-                    action={() => actions.sendCommand(device.device_id, 'BUZZER_OFF')}
-                    success="Đã gửi lệnh tắt còi."
-                  >
-                    Tắt còi
-                  </ActionButton>
-                  <Button asChild variant="link" className="h-auto p-0">
-                    <Link to="/alerts">Xem cảnh báo</Link>
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <ActionButton
+                      variant="outline"
+                      disabled={role === 'VIEWER' || !buzzer}
+                      action={() => actions.sendCommand(device.device_id, 'BUZZER_OFF')}
+                      success="Đã gửi lệnh tắt còi."
+                    >
+                      Tắt còi
+                    </ActionButton>
+                    <Button asChild variant="link" className="h-auto p-0">
+                      <Link to="/alerts">Xem cảnh báo</Link>
+                    </Button>
+                  </div>
                   {role === 'VIEWER' && (
                     <p className="text-xs text-muted-foreground">
                       Tài khoản Viewer chỉ có quyền xem. Không thể điều khiển thiết bị.
