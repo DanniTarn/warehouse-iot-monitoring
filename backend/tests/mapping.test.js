@@ -86,18 +86,19 @@ test('Khói cao kích hoạt cảnh báo và hai lệnh tới Node 2', () => {
   ]);
 });
 
-test('Cửa và chuyển động tạo cảnh báo mọi lúc, mức độ theo giờ', () => {
+test('Chỉ cảnh báo khi cảnh giới đang bật, mức độ theo giờ', () => {
   const current = { door_status: true, motion_detected: true };
   const before = { door_status: false, motion_detected: false };
-  const night = planRules('NODE2_SEC', { night_mode_enabled: true }, current, before, true);
+  const night = planRules('NODE2_SEC', {}, current, before, true, true);
   assert.deepEqual(night.alerts.map(a => a.type), ['DOOR_BREACH', 'MOTION_INTRUSION']);
   assert.deepEqual(night.alerts.map(a => a.severity), ['CRITICAL', 'CRITICAL']);
   assert.deepEqual(night.commands, [{ code: 'NODE2_SEC', type: 'BUZZER_ON' }]);
-  const day = planRules('NODE2_SEC', { night_mode_enabled: true }, current, before, false);
-  assert.deepEqual(day.alerts.map(a => a.severity), ['WARNING', 'WARNING']);
-  assert.match(day.alerts[0].message, /trong giờ làm việc/);
-  assert.deepEqual(day.commands, []);
-  assert.equal(planRules('NODE2_SEC', { night_mode_enabled: false }, current, before, true).alerts.length, 0);
+  const armedByDay = planRules('NODE2_SEC', {}, current, before, false, true);
+  assert.deepEqual(armedByDay.alerts.map(a => a.severity), ['WARNING', 'WARNING']);
+  assert.match(armedByDay.alerts[0].message, /trong giờ làm việc/);
+  assert.deepEqual(armedByDay.commands, []);
+  assert.equal(planRules('NODE2_SEC', {}, current, before, false, false).alerts.length, 0);
+  assert.equal(planRules('NODE2_SEC', {}, current, before, true, false).alerts.length, 0);
 });
 
 test('Không tạo cảnh báo lặp lại nếu ngưỡng vẫn đang vượt', () => {
