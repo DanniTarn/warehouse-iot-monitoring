@@ -6,13 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/app/page-header'
 import { BackLink, Field, Notice, SecretToken, ToneBadge } from '@/components/app/kit'
+import { NativeSelect } from '@/components/app/native-select'
 import { LIFECYCLES } from '@/services/config'
 import { useActions } from '@/store/actions'
 import { useDashboard } from '@/store/dashboard'
 import { cn } from '@/lib/utils'
-
-const selectClass =
-  'h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50'
 
 const steps = [
   ['Đăng ký', 'Nhập thông tin thiết bị'],
@@ -122,17 +120,17 @@ export default function DeviceAdd() {
                   />
                 </Field>
                 <Field label="Kho" id="add-warehouse" hint="warehouse_id">
-                  <select id="add-warehouse" name="warehouse_id" defaultValue="" className={selectClass}>
+                  <NativeSelect id="add-warehouse" name="warehouse_id" defaultValue="">
                     <option value="">Chưa chọn kho</option>
                     {data.warehouses.map((w) => (
                       <option value={w.warehouse_id} key={w.warehouse_id}>
                         {w.warehouse_name}
                       </option>
                     ))}
-                  </select>
+                  </NativeSelect>
                 </Field>
                 <Field label="Người phụ trách" id="add-owner" hint="assigned_user_id">
-                  <select id="add-owner" name="assigned_user_id" defaultValue="" className={selectClass}>
+                  <NativeSelect id="add-owner" name="assigned_user_id" defaultValue="">
                     <option value="">Chưa phân công</option>
                     {data.users
                       .filter((user) => user.is_active)
@@ -141,7 +139,7 @@ export default function DeviceAdd() {
                           {user.username}
                         </option>
                       ))}
-                  </select>
+                  </NativeSelect>
                 </Field>
               </div>
               <p className="text-xs text-muted-foreground">

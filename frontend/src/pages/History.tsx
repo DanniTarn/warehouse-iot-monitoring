@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/table'
 import { PageHeader } from '@/components/app/page-header'
 import { Notice } from '@/components/app/kit'
+import { NativeSelect } from '@/components/app/native-select'
+import { Pagination } from '@/components/app/pagination'
 import { CommandTable } from '@/components/common/CommandTable'
 import { api, type HistoryRows } from '@/services/api'
 import { dateTime, number, TIME_ZONE } from '@/services/format'
@@ -120,9 +122,6 @@ function todayInVietnam() {
   return `${value('year')}-${value('month')}-${value('day')}`
 }
 
-const inputClass =
-  'h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50'
-
 export default function History() {
   const data = useDashboard((s) => s.data)!
   const token = useAuth((s) => s.token)
@@ -136,6 +135,7 @@ export default function History() {
   const [from, setFrom] = useState(todayInVietnam)
   const [to, setTo] = useState(todayInVietnam)
   const [page, setPage] = useState(0)
+  const [size, setSize] = useState(50)
   const [rows, setRows] = useState<HistoryRows | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -183,8 +183,8 @@ export default function History() {
   const audit = rows?.tab === 'audit' ? rows.rows : []
   const total =
     tab === 'telemetry' ? telemetry.length : tab === 'commands' ? commands.length : audit.length
-  const current = Math.min(page, Math.max(0, Math.ceil(total / 50) - 1))
-  const slice = <T,>(items: T[]) => items.slice(current * 50, (current + 1) * 50)
+  const current = Math.min(page, Math.max(0, Math.ceil(total / size) - 1))
+  const slice = <T,>(items: T[]) => items.slice(current * size, (current + 1) * size)
   const cap = tab === 'telemetry' ? 5000 : 500
   const selected = data.devices.find((item) => String(item.device_id) === device)
   const columns = selected ? KIND_READINGS[getDeviceKind(selected)] : null
@@ -290,9 +290,8 @@ export default function History() {
         {tab !== 'audit' && (
           <div className="space-y-1.5">
             <Label htmlFor="history-device">Thiết bị</Label>
-            <select
+            <NativeSelect
               id="history-device"
-              className={inputClass}
               value={device}
               onChange={(e) => {
                 setDevice(e.target.value)
@@ -305,7 +304,7 @@ export default function History() {
                   {d.device_code}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
         )}
         <div className="space-y-1.5">
@@ -441,30 +440,19 @@ export default function History() {
         </section>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <span className="text-xs text-muted-foreground">
-          Hiển thị {total ? current * 50 + 1 : 0}–{Math.min((current + 1) * 50, total)} / {total}{' '}
-          bản ghi
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!current}
-            onClick={() => setPage(current - 1)}
-          >
-            Mới hơn
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={(current + 1) * 50 >= total}
-            onClick={() => setPage(current + 1)}
-          >
-            Cũ hơn
-          </Button>
-        </div>
-      </div>
+      <Pagination
+        page={current}
+        pageSize={size}
+        total={total}
+        onPageChange={(next) => {
+          setPage(next)
+          window.scrollTo({ top: 0, behavior: 'smooth' })
+        }}
+        onPageSizeChange={(next) => {
+          setSize(next)
+          setPage(0)
+        }}
+      />
     </div>
   )
 }
