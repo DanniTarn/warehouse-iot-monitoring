@@ -17,7 +17,7 @@ const env = {
   mqttUsername: process.env.MQTT_USERNAME || undefined,
   mqttPassword: process.env.MQTT_PASSWORD || undefined,
   mqttClientId: process.env.MQTT_CLIENT_ID || 'warehouse-backend',
-  offlineSeconds: intValue('OFFLINE_TIMEOUT_SECONDS', 90),
+  offlineSeconds: intValue('OFFLINE_TIMEOUT_SECONDS', 30),
   commandSeconds: intValue('COMMAND_TIMEOUT_SECONDS', 10),
   nightTimezone: process.env.NIGHT_TIMEZONE || 'Asia/Ho_Chi_Minh',
   nightStartHour: Number(process.env.NIGHT_START_HOUR ?? 20),
