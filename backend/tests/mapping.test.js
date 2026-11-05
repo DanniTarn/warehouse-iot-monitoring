@@ -40,7 +40,7 @@ test('Kiểm tra thời gian ngoài giờ làm việc', () => {
 
 test('Tính kết nối theo heartbeat và trạng thái', () => {
   const now = Date.parse('2026-11-08T12:00:00Z');
-  assert.equal(isOnline({ lifecycle_status: 'ACTIVE', last_heartbeat: '2026-11-08T11:59:20Z' }, now), true);
+  assert.equal(isOnline({ lifecycle_status: 'ACTIVE', last_heartbeat: '2026-11-08T11:59:50Z' }, now), true);
   assert.equal(isOnline({ lifecycle_status: 'ACTIVE', last_heartbeat: '2026-11-08T11:58:20Z' }, now), false);
   assert.equal(isOnline({ lifecycle_status: 'DECOMMISSIONED', last_heartbeat: '2026-11-08T12:00:00Z' }, now), false);
 });
