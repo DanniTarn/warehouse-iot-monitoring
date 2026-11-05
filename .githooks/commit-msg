@@ -1,0 +1,10 @@
+#!/bin/sh
+node - "$1" <<'JS'
+const fs = require('node:fs')
+const path = process.argv[2]
+const pattern = /^co-authored-by:.*(claude|anthropic|deepseek|openai|chatgpt|copilot|gemini)/i
+const text = fs.readFileSync(path, 'utf8')
+const kept = text.split('\n').filter((line) => !pattern.test(line.trim()))
+while (kept.length && kept[kept.length - 1].trim() === '') kept.pop()
+fs.writeFileSync(path, kept.join('\n') + '\n')
+JS
