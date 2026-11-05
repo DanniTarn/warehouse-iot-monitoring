@@ -357,12 +357,6 @@ export default function Overview() {
             ))}
             <div className="space-y-2 border-t pt-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Chế độ ban đêm</span>
-                <Badge variant={envConfig?.night_mode_enabled ? 'default' : 'secondary'}>
-                  {envConfig?.night_mode_enabled ? 'Đang bật' : 'Đang tắt'}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Đèn LED</span>
                 <span className="text-sm font-medium text-destructive">
                   {data.presentation.led}
