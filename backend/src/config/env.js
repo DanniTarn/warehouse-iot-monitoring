@@ -5,6 +5,9 @@ const intValue = (name, fallback) => {
   return Number.isInteger(value) && value > 0 ? value : fallback;
 };
 
+const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN || '';
+const telegramChatId = process.env.TELEGRAM_CHAT_ID || '';
+
 const env = {
   port: intValue('PORT', 3000),
   databaseUrl: process.env.DATABASE_URL || process.env.PG_URI || '',
@@ -23,7 +26,10 @@ const env = {
   nightStartHour: Number(process.env.NIGHT_START_HOUR ?? 20),
   nightEndHour: Number(process.env.NIGHT_END_HOUR ?? 6),
   syncThresholdsOnHeartbeat: process.env.SYNC_THRESHOLDS_ON_HEARTBEAT === 'true',
-  seedDefaultNodes: process.env.SEED_DEFAULT_NODES === 'true'
+  seedDefaultNodes: process.env.SEED_DEFAULT_NODES === 'true',
+  telegramBotToken,
+  telegramChatId,
+  telegramEnabled: Boolean(telegramBotToken.trim() && telegramChatId.trim())
 };
 
 function checkConfig() {
