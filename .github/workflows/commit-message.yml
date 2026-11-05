@@ -1,0 +1,21 @@
+name: Commit messages
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: No AI co-author trailers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Reject AI co-author trailers
+        run: node scripts/check-commit-messages.mjs "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
