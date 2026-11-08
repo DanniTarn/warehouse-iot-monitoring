@@ -7,6 +7,7 @@ const { deviceSelect, deviceById } = require('../services/store');
 const { deviceView } = require('../utils/data');
 const { audit } = require('../services/audit');
 const { broadcast } = require('../services/realtime');
+const { syncThresholds } = require('../services/configSync');
 
 const router = express.Router();
 router.use(verifyToken);
@@ -126,8 +127,9 @@ router.get('/:id/config', async (req, res) => {
 router.put('/:id/config', authorizeRoles('ADMIN', 'OPERATOR'), async (req, res) => {
   const id = positiveId(req.params.id);
   const body = req.body || {};
-  const fields = ['humidity_threshold', 'smoke_gas_threshold', 'telemetry_interval', 'night_mode_enabled'];
+  const fields = ['temperature_threshold', 'humidity_threshold', 'smoke_gas_threshold', 'telemetry_interval', 'night_mode_enabled'];
   if (!fields.some(field => Object.hasOwn(body, field))) throw new HttpError(400, 'Chưa có cấu hình cần thay đổi.');
+  const temperature = Object.hasOwn(body, 'temperature_threshold') ? optionalNumber(body.temperature_threshold, 'Ngưỡng nhiệt độ', 0, 125) : undefined;
   const humidity = Object.hasOwn(body, 'humidity_threshold') ? optionalNumber(body.humidity_threshold, 'Ngưỡng độ ẩm', 0, 100) : undefined;
   const smoke = Object.hasOwn(body, 'smoke_gas_threshold') ? optionalNumber(body.smoke_gas_threshold, 'Ngưỡng khói', 0, 100000) : undefined;
   const interval = Object.hasOwn(body, 'telemetry_interval') ? optionalNumber(body.telemetry_interval, 'Chu kỳ dữ liệu', 1, 3600) : undefined;
@@ -135,17 +137,22 @@ router.put('/:id/config', authorizeRoles('ADMIN', 'OPERATOR'), async (req, res) 
   const night = Object.hasOwn(body, 'night_mode_enabled') ? boolValue(body.night_mode_enabled, 'Chế độ ban đêm') : undefined;
   const updated = await transaction(async db => {
     const result = await db.query(
-      `UPDATE device_configs SET humidity_threshold=CASE WHEN $2::boolean THEN $3 ELSE humidity_threshold END,
-       smoke_gas_threshold=CASE WHEN $4::boolean THEN $5 ELSE smoke_gas_threshold END,
-       telemetry_interval=COALESCE($6,telemetry_interval),
-       night_mode_enabled=COALESCE($7,night_mode_enabled),updated_at=NOW()
+      `UPDATE device_configs SET temperature_threshold=CASE WHEN $2::boolean THEN $3 ELSE temperature_threshold END,
+       humidity_threshold=CASE WHEN $4::boolean THEN $5 ELSE humidity_threshold END,
+       smoke_gas_threshold=CASE WHEN $6::boolean THEN $7 ELSE smoke_gas_threshold END,
+       telemetry_interval=COALESCE($8,telemetry_interval),
+       night_mode_enabled=COALESCE($9,night_mode_enabled),updated_at=NOW()
        WHERE device_id=$1 RETURNING *`,
-      [id, humidity !== undefined, humidity ?? null, smoke !== undefined, smoke ?? null, interval ?? null, night ?? null]
+      [id, temperature !== undefined, temperature ?? null, humidity !== undefined, humidity ?? null, smoke !== undefined, smoke ?? null, interval ?? null, night ?? null]
     );
     if (!result.rowCount) throw new HttpError(404, 'Không tìm thấy cấu hình thiết bị.');
     await audit('UPDATE_CONFIG', req.user.user_id, { device_id: id, changes: body }, req.ip, db);
     return result.rows[0];
   });
+  if (temperature !== undefined || humidity !== undefined || smoke !== undefined) {
+    const device = await deviceById(id);
+    void syncThresholds(id, device.device_code).catch(error => console.error('Không gửi được ngưỡng cấu hình tới thiết bị:', error.message));
+  }
   res.json(updated);
 });
 

@@ -13,7 +13,7 @@ const pool = new Pool({
 async function connectDB() {
   const client = await pool.connect();
   try {
-    const migrations = ['001_initial_schema.sql', '002_mongo_outbox.sql'];
+    const migrations = ['001_initial_schema.sql', '002_mongo_outbox.sql', '003_firmware_threshold.sql'];
     await client.query('BEGIN');
     for (const name of migrations) {
       const schema = await fs.readFile(path.join(__dirname, '../../migrations', name), 'utf8');

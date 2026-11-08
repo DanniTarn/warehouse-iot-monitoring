@@ -22,6 +22,7 @@ const env = {
   nightTimezone: process.env.NIGHT_TIMEZONE || 'Asia/Ho_Chi_Minh',
   nightStartHour: Number(process.env.NIGHT_START_HOUR ?? 20),
   nightEndHour: Number(process.env.NIGHT_END_HOUR ?? 6),
+  syncThresholdsOnHeartbeat: process.env.SYNC_THRESHOLDS_ON_HEARTBEAT === 'true',
   seedDefaultNodes: process.env.SEED_DEFAULT_NODES === 'true'
 };
 

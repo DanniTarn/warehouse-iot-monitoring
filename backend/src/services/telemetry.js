@@ -1,8 +1,14 @@
 const { pool } = require('../config/db');
+const { env } = require('../config/env');
 const { deviceByCode, deviceById } = require('./store');
 const { mapTelemetry } = require('../utils/data');
 const { broadcast } = require('./realtime');
 const { evaluateRules } = require('./rules');
+const { deviceStates } = require('../utils/firmwareProtocol');
+const { updateActuatorStates } = require('./actuators');
+const { syncThresholds } = require('./configSync');
+
+const lastThresholdSync = new Map();
 
 async function updateHeartbeat(device) {
   const result = await pool.query(
@@ -24,6 +30,13 @@ async function receiveHeartbeat(code) {
   const device = await deviceByCode(code);
   if (!device || !['ACTIVE', 'OFFLINE'].includes(device.lifecycle_status)) return;
   await updateHeartbeat(device);
+  if (env.syncThresholdsOnHeartbeat && code.endsWith('_ENV') && Date.now() - (lastThresholdSync.get(code) || 0) > 60000) {
+    try {
+      if (await syncThresholds(device.device_id, code)) lastThresholdSync.set(code, Date.now());
+    } catch (error) {
+      console.error('Không đồng bộ được ngưỡng với Node 1:', error.message);
+    }
+  }
 }
 
 async function receiveTelemetry(code, payload) {
@@ -43,6 +56,7 @@ async function receiveTelemetry(code, payload) {
     [device.device_id, data.temperature, data.humidity, data.smoke_gas_level, data.door_status, data.motion_detected]
   );
   await updateHeartbeat(device);
+  await updateActuatorStates(device.device_id, code, deviceStates(code, payload));
   const reading = { ...result.rows[0], device_code: code };
   broadcast('telemetry', reading);
   const configs = await pool.query('SELECT * FROM device_configs WHERE device_id=$1', [device.device_id]);
