@@ -142,6 +142,9 @@
     gap: 5px;
     overflow-x: auto;
     scrollbar-width: none;
+    padding-right: 24px;
+    mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
   }
   .nav a {
     flex: none;
