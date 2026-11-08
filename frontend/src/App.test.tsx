@@ -147,6 +147,15 @@ describe('real actions against the store', () => {
     expect(screen.getByRole('button', { name: /Đã xử lý/ })).toHaveTextContent('4')
   })
 
+  it('shows the fan mode acknowledged by a FAN_ON command', async () => {
+    const user = userEvent.setup()
+    await open('/devices/1')
+    const forced = await screen.findByRole('button', { name: 'Bật cưỡng chế' })
+    expect(forced).toHaveAttribute('aria-pressed', 'false')
+    await user.click(forced)
+    await waitFor(() => expect(forced).toHaveAttribute('aria-pressed', 'true'))
+  })
+
   it('saves configuration and keeps it after reopening the device', async () => {
     const user = userEvent.setup()
     await open('/devices/1')
