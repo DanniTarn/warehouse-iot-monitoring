@@ -36,4 +36,20 @@ describe('mock API mirrors backend validation', () => {
       mockApi.sendCommand(admin, 2, 'BUZZER_ON' as Parameters<typeof mockApi.sendCommand>[2]),
     ).rejects.toThrow('Loại lệnh không hợp lệ.')
   })
+
+  it('signs a new account in with its own password only', async () => {
+    await mockApi.createUser(admin, {
+      username: 'mat.khau',
+      full_name: 'Mật Khẩu',
+      email: null,
+      role: 'VIEWER',
+      password: 'Rieng@12345',
+    })
+    await expect(mockApi.login('mat.khau', 'Rieng@12345')).resolves.toMatchObject({
+      user: { username: 'mat.khau' },
+    })
+    await expect(mockApi.login('mat.khau', 'demo123')).rejects.toThrow(
+      'Sai tên đăng nhập hoặc mật khẩu.',
+    )
+  })
 })
