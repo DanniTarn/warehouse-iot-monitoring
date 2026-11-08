@@ -25,6 +25,7 @@ import { ConfigForm } from '../components/control/ConfigForm'
 import ui from '../components/common/UI.module.css'
 import styles from './Pages.module.css'
 import { buzzerSounding } from '../services/dashboardView'
+const RECENT_COMMANDS = 10
 export default function DeviceDetail() {
   const { deviceId } = useParams()
   const data = useDashboard((s) => s.data)!
@@ -282,7 +283,10 @@ export default function DeviceDetail() {
             </Card>
           )}
           <Card title="Lệnh gần đây">
-            <CommandTable commands={commands} />
+            <CommandTable commands={commands.slice(0, RECENT_COMMANDS)} />
+            <Link to={`/history?tab=commands&device=${device.device_id}`} className={ui.link}>
+              Xem tất cả trong Lịch sử
+            </Link>
           </Card>
         </div>
       </div>
