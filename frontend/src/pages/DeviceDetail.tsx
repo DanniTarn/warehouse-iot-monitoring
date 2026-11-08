@@ -49,6 +49,8 @@ export default function DeviceDetail() {
   const temperatureThreshold = config?.temperature_threshold ?? 50
   const humidityHigh = reading?.humidity != null && reading.humidity > humidityThreshold
   const temperatureHigh = reading?.temperature != null && reading.temperature > temperatureThreshold
+  const smokeThreshold = config?.smoke_gas_threshold ?? MONITORING.smoke.threshold
+  const smokeHigh = reading?.smoke_gas_level != null && reading.smoke_gas_level > smokeThreshold
   const buzzer = buzzerSounding(data.commands, device.device_id)
   const commands = data.commands.filter((command) => command.device_id === device.device_id)
   const sensors: [string, string][] = environment
@@ -197,7 +199,12 @@ export default function DeviceDetail() {
                 label="Khói / khí gas"
                 value={number(reading.smoke_gas_level, 0)}
                 unit={MONITORING.smoke.unit}
-                status="Bình thường"
+                status={
+                  smokeHigh
+                    ? `Vượt ngưỡng ${smokeThreshold} ${MONITORING.smoke.unit}`
+                    : 'Bình thường'
+                }
+                tone={smokeHigh ? 'warning' : 'good'}
               />
             </section>
           ) : (
@@ -205,14 +212,14 @@ export default function DeviceDetail() {
               <Stat
                 label="Cửa kho"
                 value={reading.door_status ? 'Mở' : 'Đóng'}
-                status="Ngoài giờ giới nghiêm"
-                tone="critical"
+                status={reading.door_status ? 'Ngoài giờ giới nghiêm' : 'Đóng'}
+                tone={reading.door_status ? 'critical' : 'good'}
               />
               <Stat
                 label="Chuyển động"
                 value={reading.motion_detected ? 'Có' : 'Không'}
-                status="Lần cuối 18:52"
-                tone="muted"
+                status={reading.motion_detected ? 'Có chuyển động' : 'Không có chuyển động'}
+                tone={reading.motion_detected ? 'critical' : 'muted'}
               />
               <Stat
                 label="Còi báo động"
