@@ -1,9 +1,13 @@
 import { useState, type FormEvent } from 'react'
-import type { ConfigPatch, DeviceConfig } from '../../services/types'
-import { useAuth } from '../../store/auth'
-import { useActions } from '../../store/actions'
-import { Button, Card, Field, Notice } from '../common/UI'
-import styles from '../../pages/Pages.module.css'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Field, Notice } from '@/components/app/kit'
+import type { ConfigPatch, DeviceConfig } from '@/services/types'
+import { useActions } from '@/store/actions'
+import { useAuth } from '@/store/auth'
+
 export function ConfigForm({
   config,
   environment,
@@ -48,99 +52,104 @@ export function ConfigForm({
     }
   }
   return (
-    <Card title="Cấu hình thiết bị">
-      <form className="stack" onSubmit={submit}>
-        <div className={styles.fields}>
-          {environment && (
-            <>
-              <Field label="Ngưỡng độ ẩm (%)" id="humidity" hint="humidity_threshold">
-                <input
-                  type="number"
-                  id="humidity"
-                  min="0"
-                  max="100"
-                  step="any"
-                  value={form.humidity_threshold ?? ''}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      humidity_threshold: e.target.value === '' ? null : Number(e.target.value),
-                    })
-                  }
-                  disabled={viewer}
-                  required
-                />
-              </Field>
-              <Field label="Ngưỡng khói / khí gas" id="smoke" hint="smoke_gas_threshold">
-                <input
-                  type="number"
-                  id="smoke"
-                  min="0"
-                  max="100000"
-                  step="any"
-                  value={form.smoke_gas_threshold ?? ''}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      smoke_gas_threshold: e.target.value === '' ? null : Number(e.target.value),
-                    })
-                  }
-                  disabled={viewer}
-                  required
-                />
-              </Field>
-            </>
-          )}
-          <Field label="Chu kỳ gửi dữ liệu (giây)" id="interval" hint="telemetry_interval">
-            <input
-              type="number"
-              id="interval"
-              min="1"
-              max="3600"
-              step="1"
-              value={form.telemetry_interval || ''}
-              onChange={(e) => setForm({ ...form, telemetry_interval: Number(e.target.value) })}
-              disabled={viewer}
-              required
-            />
-          </Field>
-        </div>
-        <div>
-          <label className={styles.radio}>
-            <input
-              type="checkbox"
+    <Card className="shadow-none">
+      <CardHeader>
+        <CardTitle className="text-base">Cấu hình thiết bị</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form className="space-y-4" onSubmit={submit}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {environment && (
+              <>
+                <Field label="Ngưỡng độ ẩm (%)" id="humidity" hint="humidity_threshold">
+                  <Input
+                    type="number"
+                    id="humidity"
+                    min="0"
+                    max="100"
+                    step="any"
+                    value={form.humidity_threshold ?? ''}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        humidity_threshold: e.target.value === '' ? null : Number(e.target.value),
+                      })
+                    }
+                    disabled={viewer}
+                    required
+                  />
+                </Field>
+                <Field label="Ngưỡng khói / khí gas" id="smoke" hint="smoke_gas_threshold">
+                  <Input
+                    type="number"
+                    id="smoke"
+                    min="0"
+                    max="100000"
+                    step="any"
+                    value={form.smoke_gas_threshold ?? ''}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        smoke_gas_threshold: e.target.value === '' ? null : Number(e.target.value),
+                      })
+                    }
+                    disabled={viewer}
+                    required
+                  />
+                </Field>
+              </>
+            )}
+            <Field label="Chu kỳ gửi dữ liệu (giây)" id="interval" hint="telemetry_interval">
+              <Input
+                type="number"
+                id="interval"
+                min="1"
+                max="3600"
+                step="1"
+                value={form.telemetry_interval || ''}
+                onChange={(e) => setForm({ ...form, telemetry_interval: Number(e.target.value) })}
+                disabled={viewer}
+                required
+              />
+            </Field>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox
               checked={form.night_mode_enabled}
-              onChange={(e) => setForm({ ...form, night_mode_enabled: e.target.checked })}
+              onCheckedChange={(checked) =>
+                setForm({ ...form, night_mode_enabled: checked === true })
+              }
               disabled={viewer}
             />
             Bật chế độ ban đêm
           </label>
-          <p className="mono small muted">night_mode_enabled</p>
-        </div>
-        {viewer ? (
-          <p className={styles.viewerNote}>
-            Tài khoản Viewer chỉ có quyền xem, không thể thay đổi cấu hình.
-          </p>
-        ) : (
-          <div className="row">
-            <Button type="submit" variant="primary" disabled={!dirty || pending}>
-              {pending ? 'Đang lưu…' : 'Lưu cấu hình'}
-            </Button>
-            <Button
-              disabled={!dirty || pending}
-              onClick={() => {
-                setForm(config)
-                setError('')
-                setSaved(false)
-              }}
-            >
-              Hoàn tác
-            </Button>
-          </div>
-        )}
-        {error && <Notice error>{error}</Notice>}
-        {saved && !dirty && <Notice>Đã lưu cấu hình.</Notice>}
-      </form>
+          {viewer ? (
+            <p className="text-xs text-muted-foreground">
+              Tài khoản Viewer chỉ có quyền xem, không thể thay đổi cấu hình.
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="submit" disabled={!dirty || pending}>
+                {pending ? 'Đang lưu…' : 'Lưu cấu hình'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!dirty || pending}
+                onClick={() => {
+                  setForm(config)
+                  setError('')
+                  setSaved(false)
+                }}
+              >
+                Hoàn tác
+              </Button>
+            </div>
+          )}
+          {error && <Notice error>{error}</Notice>}
+          {saved && <Notice>Đã lưu cấu hình.</Notice>}
+        </form>
+      </CardContent>
     </Card>
   )
 }

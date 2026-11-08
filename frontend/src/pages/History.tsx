@@ -1,17 +1,31 @@
 import { Fragment, useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
-import { useAuth } from '../store/auth'
-import { useDashboard } from '../store/dashboard'
-import { api, type HistoryRows } from '../services/api'
-import { dateTime, number, TIME_ZONE } from '../services/format'
-import { getDeviceKind, MONITORING } from '../services/config'
-import type { Telemetry } from '../services/types'
-import { toCsv } from '../services/csv'
-import { Button, EmptyRow, Field, Notice, PageHeader, Table } from '../components/common/UI'
-import { CommandTable } from '../components/common/CommandTable'
-import ui from '../components/common/UI.module.css'
-import styles from './Pages.module.css'
+import { Download } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { PageHeader } from '@/components/app/page-header'
+import { Notice } from '@/components/app/kit'
+import { CommandTable } from '@/components/common/CommandTable'
+import { api, type HistoryRows } from '@/services/api'
+import { dateTime, number, TIME_ZONE } from '@/services/format'
+import { getDeviceKind, MONITORING } from '@/services/config'
+import type { Telemetry } from '@/services/types'
+import { toCsv } from '@/services/csv'
+import { useAuth } from '@/store/auth'
+import { useDashboard } from '@/store/dashboard'
+import { cn } from '@/lib/utils'
+
 type ReadingKey = 'temperature' | 'humidity' | 'smoke' | 'door' | 'motion'
+
 interface Reading {
   header: string
   numeric: boolean
@@ -19,6 +33,7 @@ interface Reading {
   inline: (row: Telemetry) => string | null
   highlight: (row: Telemetry) => '' | 'warning' | 'critical'
 }
+
 const READINGS: Record<ReadingKey, Reading> = {
   temperature: {
     header: 'Nhiệt độ (°C)',
@@ -64,12 +79,22 @@ const READINGS: Record<ReadingKey, Reading> = {
     highlight: () => '',
   },
 }
+
 const ALL_READINGS = Object.keys(READINGS) as ReadingKey[]
+
 const KIND_READINGS: Record<ReturnType<typeof getDeviceKind>, ReadingKey[]> = {
   environment: ['temperature', 'humidity', 'smoke'],
   security: ['door', 'motion'],
   unknown: ALL_READINGS,
 }
+
+const cellClass = (level: '' | 'warning' | 'critical') =>
+  cn(
+    'font-mono text-xs',
+    level === 'warning' && 'text-amber-700',
+    level === 'critical' && 'text-red-700',
+  )
+
 function ReadingSummary({ row }: { row: Telemetry }) {
   const present = ALL_READINGS.flatMap((key) => {
     const text = READINGS[key].inline(row)
@@ -79,10 +104,11 @@ function ReadingSummary({ row }: { row: Telemetry }) {
   return present.map(({ key, text }, index) => (
     <Fragment key={key}>
       {index > 0 && ' · '}
-      <span className={READINGS[key].highlight(row)}>{text}</span>
+      <span className={cn(READINGS[key].highlight(row), cellClass(READINGS[key].highlight(row)))}>{text}</span>
     </Fragment>
   ))
 }
+
 function todayInVietnam() {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: TIME_ZONE,
@@ -93,6 +119,10 @@ function todayInVietnam() {
   const value = (type: string) => parts.find((part) => part.type === type)?.value
   return `${value('year')}-${value('month')}-${value('day')}`
 }
+
+const inputClass =
+  'h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50'
+
 export default function History() {
   const data = useDashboard((s) => s.data)!
   const token = useAuth((s) => s.token)
@@ -111,6 +141,7 @@ export default function History() {
   const [error, setError] = useState('')
   const invalid = !!from && !!to && from > to
   const allowed = ['telemetry', 'commands', 'audit'].includes(tab) && (tab !== 'audit' || admin)
+
   useEffect(() => {
     if (!token || !allowed || invalid) {
       setRows(null)
@@ -144,7 +175,9 @@ export default function History() {
       active = false
     }
   }, [token, allowed, invalid, tab, from, to, device])
+
   if (!allowed) return <Navigate to="/history?tab=telemetry" replace />
+
   const telemetry = rows?.tab === 'telemetry' ? rows.rows : []
   const commands = rows?.tab === 'commands' ? rows.rows : []
   const audit = rows?.tab === 'audit' ? rows.rows : []
@@ -160,6 +193,7 @@ export default function History() {
     ['commands', 'Lệnh điều khiển'],
     ...(admin ? [['audit', 'Nhật ký thao tác']] : []),
   ]
+
   function exportCsv() {
     const name =
       tab === 'telemetry'
@@ -216,30 +250,49 @@ export default function History() {
     link.click()
     URL.revokeObjectURL(url)
   }
+
   return (
-    <>
-      <PageHeader title="Lịch sử" subtitle="Dữ liệu cảm biến, lệnh điều khiển và nhật ký thao tác">
-        <Button onClick={exportCsv} disabled={loading || !total}>
-          Xuất CSV
-        </Button>
-      </PageHeader>
-      <nav className={ui.tabs} aria-label="Loại lịch sử">
+    <div className="space-y-4">
+      <PageHeader
+        title="Lịch sử"
+        subtitle="Dữ liệu cảm biến, lệnh điều khiển và nhật ký thao tác"
+        actions={
+          <Button variant="outline" onClick={exportCsv} disabled={loading || !total}>
+            <Download className="size-4" />
+            Xuất CSV
+          </Button>
+        }
+      />
+
+      <nav
+        className="flex flex-wrap gap-1 rounded-lg border bg-muted/40 p-1"
+        aria-label="Loại lịch sử"
+      >
         {tabs.map(([key, title]) => (
           <Link
             key={key}
             to={`/history?tab=${key}`}
             aria-current={tab === key ? 'page' : undefined}
             onClick={() => setPage(0)}
+            className={cn(
+              'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              tab === key
+                ? 'bg-card text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
           >
             {title}
           </Link>
         ))}
       </nav>
-      <div className={styles.toolbar}>
+
+      <div className="grid gap-3 rounded-xl border bg-card p-3 sm:grid-cols-2 lg:grid-cols-4">
         {tab !== 'audit' && (
-          <Field id="history-device" label="Thiết bị">
+          <div className="space-y-1.5">
+            <Label htmlFor="history-device">Thiết bị</Label>
             <select
               id="history-device"
+              className={inputClass}
               value={device}
               onChange={(e) => {
                 setDevice(e.target.value)
@@ -253,10 +306,11 @@ export default function History() {
                 </option>
               ))}
             </select>
-          </Field>
+          </div>
         )}
-        <Field id="from" label="Từ ngày">
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="from">Từ ngày</Label>
+          <Input
             type="date"
             id="from"
             value={from}
@@ -265,9 +319,10 @@ export default function History() {
               setPage(0)
             }}
           />
-        </Field>
-        <Field id="to" label="Đến ngày">
-          <input
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="to">Đến ngày</Label>
+          <Input
             type="date"
             id="to"
             value={to}
@@ -276,8 +331,9 @@ export default function History() {
               setPage(0)
             }}
           />
-        </Field>
+        </div>
       </div>
+
       {invalid && <Notice error>Từ ngày phải trước hoặc bằng Đến ngày.</Notice>}
       {error && <Notice error>{error}</Notice>}
       {loading && <Notice>Đang tải lịch sử…</Notice>}
@@ -287,74 +343,128 @@ export default function History() {
           lại.
         </Notice>
       )}
+
       {tab === 'telemetry' && (
-        <Table
-          label="Dữ liệu cảm biến"
-          headers={[
-            'Thời gian',
-            'Thiết bị',
-            ...(columns ? columns.map((key) => READINGS[key].header) : ['Giá trị']),
-          ]}
-        >
-          {slice(telemetry).map((r) => (
-            <tr key={r.telemetry_id}>
-              <td className="mono">{dateTime(r.recorded_at, true)}</td>
-              <td className="mono">{r.device_code}</td>
-              {columns ? (
-                columns.map((key) => {
-                  const reading = READINGS[key]
-                  return (
-                    <td
-                      key={key}
-                      className={`${reading.numeric ? 'mono' : ''} ${reading.highlight(r)}`}
-                      data-numeric={reading.numeric || undefined}
-                    >
-                      {reading.cell(r)}
-                    </td>
-                  )
-                })
-              ) : (
-                <td className="mono">
-                  <ReadingSummary row={r} />
-                </td>
-              )}
-            </tr>
-          ))}
-          {!telemetry.length && <EmptyRow columns={2 + (columns?.length ?? 1)} />}
-        </Table>
+        <section aria-label="Dữ liệu cảm biến" className="overflow-x-auto rounded-xl border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Thời gian</TableHead>
+                <TableHead>Thiết bị</TableHead>
+                {columns ? (
+                  columns.map((key) => (
+                    <TableHead key={key} className={READINGS[key].numeric ? 'text-right' : ''}>
+                      {READINGS[key].header}
+                    </TableHead>
+                  ))
+                ) : (
+                  <TableHead>Giá trị</TableHead>
+                )}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {slice(telemetry).map((row) => (
+                <TableRow key={row.telemetry_id}>
+                  <TableCell className="font-mono text-xs">
+                    {dateTime(row.recorded_at, true)}
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">{row.device_code}</TableCell>
+                  {columns ? (
+                    columns.map((key) => (
+                      <TableCell
+                        key={key}
+                        data-numeric={READINGS[key].numeric || undefined}
+                        className={cn(
+                          cellClass(READINGS[key].highlight(row)),
+                          READINGS[key].numeric && 'text-right',
+                        )}
+                      >
+                        {READINGS[key].cell(row)}
+                      </TableCell>
+                    ))
+                  ) : (
+                    <TableCell>
+                      <ReadingSummary row={row} />
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {!telemetry.length && (
+            <p className="px-4 py-12 text-center text-sm text-muted-foreground">
+              Không có dữ liệu trong khoảng đã chọn.
+            </p>
+          )}
+        </section>
       )}
-      {tab === 'commands' && <CommandTable commands={slice(commands)} />}
+
+      {tab === 'commands' && (
+        <section aria-label="Lệnh điều khiển">
+          <CommandTable commands={slice(commands)} />
+        </section>
+      )}
+
       {tab === 'audit' && (
-        <Table
-          label="Nhật ký thao tác"
-          headers={['Thời gian', 'Người dùng', 'Hành động', 'IP', 'Chi tiết']}
-        >
-          {slice(audit).map((r) => (
-            <tr key={r.log_id}>
-              <td className="mono">{dateTime(r.created_at, true)}</td>
-              <td>{r.username}</td>
-              <td className="mono">{r.action}</td>
-              <td className="mono">{r.ip_client}</td>
-              <td className={r.details?.includes('(403)') ? 'critical' : ''}>{r.details}</td>
-            </tr>
-          ))}
-          {!audit.length && <EmptyRow columns={5} />}
-        </Table>
+        <section aria-label="Nhật ký thao tác" className="overflow-x-auto rounded-xl border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Thời gian</TableHead>
+                <TableHead>Người dùng</TableHead>
+                <TableHead>Hành động</TableHead>
+                <TableHead>IP</TableHead>
+                <TableHead>Chi tiết</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {slice(audit).map((row) => (
+                <TableRow key={row.log_id}>
+                  <TableCell className="font-mono text-xs">
+                    {dateTime(row.created_at, true)}
+                  </TableCell>
+                  <TableCell>{row.username}</TableCell>
+                  <TableCell className="font-mono text-xs">{row.action}</TableCell>
+                  <TableCell className="font-mono text-xs">{row.ip_client}</TableCell>
+                  <TableCell className={row.details?.includes('(403)') ? 'text-red-700' : ''}>
+                    {row.details}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {!audit.length && (
+            <p className="px-4 py-12 text-center text-sm text-muted-foreground">
+              Không có bản ghi trong khoảng đã chọn.
+            </p>
+          )}
+        </section>
       )}
-      <div className="row between">
-        <span className="small secondary">
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="text-xs text-muted-foreground">
           Hiển thị {total ? current * 50 + 1 : 0}–{Math.min((current + 1) * 50, total)} / {total}{' '}
           bản ghi
         </span>
-        <div className="row">
-          <Button disabled={!current} onClick={() => setPage(current - 1)}>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!current}
+            onClick={() => setPage(current - 1)}
+          >
             Mới hơn
           </Button>
-          <Button disabled={(current + 1) * 50 >= total} onClick={() => setPage(current + 1)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={(current + 1) * 50 >= total}
+            onClick={() => setPage(current + 1)}
+          >
             Cũ hơn
           </Button>
         </div>
       </div>
-    </>
+    </div>
   )
 }
