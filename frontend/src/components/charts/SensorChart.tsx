@@ -1,7 +1,8 @@
 import {
   Area,
-  AreaChart,
   CartesianGrid,
+  ComposedChart,
+  Line,
   ReferenceDot,
   ReferenceLine,
   ResponsiveContainer,
@@ -10,6 +11,12 @@ import {
   YAxis,
 } from 'recharts'
 import type { Telemetry } from '../../services/types'
+import {
+  bucketTelemetry,
+  type Bucket,
+  type SensorField,
+  type TimeWindow,
+} from '../../services/telemetryBuckets'
 import { number, time } from '../../services/format'
 import { Card } from '../common/UI'
 import styles from './SensorChart.module.css'
@@ -17,17 +24,29 @@ interface Props {
   title: string
   unit: string
   sensor: string
-  field: 'temperature' | 'humidity' | 'smoke_gas_level'
+  field: SensorField
   color: string
   domain: [number, number]
   threshold?: number
   data: Telemetry[]
+  period: TimeWindow
 }
-export function SensorChart({ title, unit, sensor, field, color, domain, threshold, data }: Props) {
-  const values = data.flatMap((row) => (row[field] == null ? [] : [row[field]]))
-  const min = Math.min(domain[0], ...values)
-  const max = Math.max(domain[1], ...values)
-  const end = data.at(-1)
+export function SensorChart({
+  title,
+  unit,
+  sensor,
+  field,
+  color,
+  domain,
+  threshold,
+  data,
+  period,
+}: Props) {
+  const digits = field === 'smoke_gas_level' ? 0 : 1
+  const buckets = bucketTelemetry(data, field, period)
+  const min = Math.min(domain[0], ...buckets.map((bucket) => bucket.min))
+  const max = Math.max(domain[1], ...buckets.map((bucket) => bucket.max))
+  const last = buckets.at(-1)
   const colorVar = `var(--${color})`
   return (
     <Card>
@@ -36,28 +55,32 @@ export function SensorChart({ title, unit, sensor, field, color, domain, thresho
           <span className={styles.line} style={{ background: colorVar }} />
           <h2>{title}</h2>
           <span className="small muted">{unit}</span>
+          {threshold !== undefined && (
+            <span className={styles.threshold}>
+              Ngưỡng {threshold} {unit}
+            </span>
+          )}
         </div>
         <span className="mono small muted">{sensor}</span>
       </div>
       <div className={styles.chart}>
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-          <AreaChart
-            data={data}
+          <ComposedChart
+            data={buckets}
             syncId="sensors"
+            syncMethod="value"
             margin={{ top: 18, right: 8, bottom: 0, left: -20 }}
             role="img"
-            aria-label={`${title}: ${number(end?.[field], field === 'smoke_gas_level' ? 0 : 1)} ${unit}`}
+            aria-label={`${title}: ${number(data.at(-1)?.[field], digits)} ${unit}`}
             accessibilityLayer={false}
           >
             <CartesianGrid vertical={false} stroke="var(--grid)" />
             <XAxis
-              dataKey="recorded_at"
+              dataKey="at"
+              type="number"
+              domain={[period.start, period.end]}
+              ticks={[period.start, (period.start + period.end) / 2, period.end]}
               tickFormatter={time}
-              ticks={[
-                data[0]?.recorded_at,
-                data[Math.floor(data.length / 2)]?.recorded_at,
-                end?.recorded_at,
-              ].filter((item): item is string => !!item)}
               tickLine={false}
               axisLine={{ stroke: 'var(--axis)' }}
               stroke="var(--ink-3)"
@@ -71,56 +94,59 @@ export function SensorChart({ title, unit, sensor, field, color, domain, thresho
               stroke="var(--ink-3)"
             />
             <Tooltip
-              labelFormatter={(label) => time(String(label))}
-              formatter={(value) => [
-                `${number(Number(value), field === 'smoke_gas_level' ? 0 : 1)} ${unit}`,
-                title,
-              ]}
-              contentStyle={{
-                background: 'var(--ink)',
-                color: 'var(--surface)',
-                border: 0,
-                borderRadius: 'var(--r-badge)',
-                fontFamily: 'var(--font-mono)',
-                fontSize: 12,
-              }}
-              itemStyle={{ color: 'var(--surface)' }}
               cursor={{ stroke: 'var(--ink-3)' }}
+              content={({ active, payload }) => {
+                const bucket = payload?.[0]?.payload as Bucket | undefined
+                if (!active || !bucket) return null
+                const low = number(bucket.min, digits)
+                const high = number(bucket.max, digits)
+                return (
+                  <div className={styles.tooltip}>
+                    <span>{time(bucket.at)}</span>
+                    <strong>
+                      Trung bình {number(bucket.avg, digits)} {unit}
+                    </strong>
+                    {low !== high && (
+                      <span>
+                        Dao động {low}–{high} {unit}
+                      </span>
+                    )}
+                  </div>
+                )
+              }}
             />
             {threshold !== undefined && (
-              <ReferenceLine
-                y={threshold}
-                stroke="var(--warn-text)"
-                strokeDasharray="4 4"
-                label={{
-                  value: `Ngưỡng ${threshold} ${unit}`,
-                  position: 'insideTopLeft',
-                  fill: 'var(--warn-text)',
-                  fontSize: 11,
-                }}
-              />
+              <ReferenceLine y={threshold} stroke="var(--warn-text)" strokeDasharray="4 4" />
             )}
             <Area
-              dataKey={field}
+              dataKey={(bucket: Bucket) => [bucket.min, bucket.max]}
+              type="linear"
+              stroke="none"
+              fill={colorVar}
+              fillOpacity={0.18}
+              isAnimationActive={false}
+              activeDot={false}
+            />
+            <Line
+              dataKey="avg"
               type="linear"
               stroke={colorVar}
-              fill={colorVar}
-              fillOpacity={0.1}
               strokeWidth={2}
+              dot={false}
               isAnimationActive={false}
               activeDot={{ r: 4, stroke: 'var(--surface)', strokeWidth: 2 }}
             />
-            {end && end[field] != null && (
+            {last && (
               <ReferenceDot
-                x={end.recorded_at}
-                y={end[field]}
+                x={last.at}
+                y={last.avg}
                 r={4}
                 fill={colorVar}
                 stroke="var(--surface)"
                 strokeWidth={2}
               />
             )}
-          </AreaChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </Card>
