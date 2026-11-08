@@ -36,3 +36,8 @@
   color: var(--surface);
   font: 12px/1.4 var(--font-mono);
 }
+@media (max-width: 640px) {
+  .chart {
+    height: 140px;
+  }
+}

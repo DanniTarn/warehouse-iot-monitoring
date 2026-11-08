@@ -57,7 +57,7 @@ export default function Overview() {
     return actions.sendCommand(secDevice.device_id, 'BUZZER_OFF')
   }
   return (
-    <>
+    <div className={styles.overview}>
       <PageHeader
         title="Tổng quan"
         subtitle={
@@ -190,7 +190,7 @@ export default function Overview() {
           tone={sec?.motion_detected ? 'critical' : 'muted'}
         />
       </section>
-      <section aria-label="Biểu đồ cảm biến" className={styles.grid}>
+      <section aria-label="Biểu đồ cảm biến" className={`${styles.grid} ${styles.charts}`}>
         <SensorChart
           title="Nhiệt độ"
           unit="°C"
@@ -224,8 +224,8 @@ export default function Overview() {
           period={period}
         />
       </section>
-      <section className={styles.grid}>
-        <Card title="Điều khiển nhanh">
+      <section className={`${styles.grid} ${styles.panels}`}>
+        <Card title="Điều khiển nhanh" className={styles.quickControls}>
           <FanControl />
           <div className="row between">
             <strong>Còi báo động</strong>
@@ -242,7 +242,7 @@ export default function Overview() {
           </ActionButton>
           <span className="mono small muted">BUZZER_OFF · {MONITORING.securityCode}</span>
         </Card>
-        <Card title="Thiết bị">
+        <Card title="Thiết bị" className={styles.devicesPanel}>
           {data.devices.slice(0, 2).map((device) => (
             <div className={styles.deviceRow} key={device.device_id}>
               <div className="row between">
@@ -264,7 +264,7 @@ export default function Overview() {
             <span className="critical">{data.presentation.led}</span>
           </div>
         </Card>
-        <Card title="Cảnh báo đang mở">
+        <Card title="Cảnh báo đang mở" className={styles.openAlerts}>
           {others.slice(0, 5).map((alert) => (
             <div className={styles.smallAlert} key={alert.alert_id}>
               <div className="row between">
@@ -287,6 +287,6 @@ export default function Overview() {
           </Link>
         </Card>
       </section>
-    </>
+    </div>
   )
 }
