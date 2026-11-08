@@ -93,8 +93,8 @@ services:
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:?SITE_ADDRESS chưa được cấu hình}
     ports:
-      - "80:80"
-      - "443:443"
+      - "${PUBLIC_BIND_IP:-0.0.0.0}:80:80"
+      - "${PUBLIC_BIND_IP:-0.0.0.0}:443:443"
     volumes:
       - caddy_data:/data
       - caddy_config:/config
