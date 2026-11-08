@@ -6,7 +6,7 @@ import { api } from './services/api'
 import App from './App'
 import { useAuth } from './store/auth'
 import { useDashboard } from './store/dashboard'
-import type { Alert, Severity } from './services/types'
+import type { Alert, Severity, Telemetry } from './services/types'
 
 beforeEach(() => {
   sessionStorage.clear()
@@ -397,6 +397,60 @@ describe('device commands and their history', () => {
         expect.objectContaining({ tab: 'commands', deviceId: undefined }),
       ),
     )
+  })
+})
+
+describe('history sensor table', () => {
+  function reading(telemetry_id: number, device_id: number, values: Partial<Telemetry>): Telemetry {
+    return {
+      telemetry_id,
+      device_id,
+      device_code: device_id === 1 ? 'NODE1_ENV' : 'NODE2_SEC',
+      temperature: null,
+      humidity: null,
+      smoke_gas_level: null,
+      door_status: null,
+      motion_detected: null,
+      recorded_at: '2026-11-09T07:00:00+07:00',
+      ...values,
+    }
+  }
+  const rows = [
+    reading(2, 2, { door_status: true, motion_detected: true }),
+    reading(1, 1, { temperature: 32, humidity: 70, smoke_gas_level: 350 }),
+  ]
+  const headers = () =>
+    within(screen.getByRole('region', { name: 'Dữ liệu cảm biến' }))
+      .getAllByRole('columnheader')
+      .map((header) => header.textContent)
+
+  it('shows each row its own readings in one column across devices', async () => {
+    vi.spyOn(api, 'history').mockResolvedValue({ tab: 'telemetry', rows })
+    await open('/history')
+    const table = await screen.findByRole('region', { name: 'Dữ liệu cảm biến' })
+    expect(await within(table).findByText('NODE1_ENV')).toBeVisible()
+    expect(headers()).toEqual(['Thời gian', 'Thiết bị', 'Giá trị'])
+    const [, security, environment] = within(table).getAllByRole('row')
+    expect(environment).toHaveTextContent('32,0 °C · 70,0 % · 350 ppm')
+    expect(security).toHaveTextContent('Cửa mở · Có chuyển động')
+    expect(within(environment).getByText('70,0 %')).toHaveClass('warning')
+    expect(within(security).getByText('Cửa mở')).toHaveClass('critical')
+  })
+
+  it('shows only the columns the selected device reports', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(api, 'history').mockImplementation(async (_token, query) => ({
+      tab: 'telemetry',
+      rows: rows.filter((row) => row.device_id === query.deviceId),
+    }))
+    await open('/history')
+    const select = await screen.findByLabelText('Thiết bị')
+    await user.selectOptions(select, 'NODE1_ENV')
+    expect(await screen.findByText('32,0')).toBeVisible()
+    expect(headers()).toEqual(['Thời gian', 'Thiết bị', 'Nhiệt độ (°C)', 'Độ ẩm (%)', 'Khói (ppm)'])
+    await user.selectOptions(select, 'NODE2_SEC')
+    expect(await screen.findByText('Mở')).toBeVisible()
+    expect(headers()).toEqual(['Thời gian', 'Thiết bị', 'Cửa', 'Chuyển động'])
   })
 })
 
