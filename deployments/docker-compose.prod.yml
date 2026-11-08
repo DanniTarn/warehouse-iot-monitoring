@@ -1,0 +1,107 @@
+name: warehouse-prod
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: warehouse_db
+      POSTGRES_USER: warehouse_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD chưa được cấu hình}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../backend/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warehouse_app -d warehouse_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:?MONGO_USERNAME chưa được cấu hình}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD chưa được cấu hình}
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --username "$$MONGO_INITDB_ROOT_USERNAME"
+          --password "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin
+          --eval 'db.adminCommand({ping:1}).ok' | grep -q 1
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config/mosquitto.prod.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/config/passwd:/mosquitto/config/passwd:ro
+      - mosquitto_data:/mosquitto/data
+
+  backend:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    environment:
+      PORT: 3000
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: warehouse_app
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: warehouse_db
+      MONGO_URI: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017/warehouse_history?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET chưa được cấu hình}
+      JWT_EXPIRES_IN: 24h
+      CORS_ORIGIN: https://${SITE_ADDRESS}
+      MQTT_BROKER_URL: mqtt://mosquitto:1883
+      MQTT_USERNAME: ${MQTT_BACKEND_USERNAME:-backend}
+      MQTT_PASSWORD: ${MQTT_BACKEND_PASSWORD:?MQTT_BACKEND_PASSWORD chưa được cấu hình}
+      MQTT_TOPIC_PREFIX: khohang
+      SYNC_THRESHOLDS_ON_HEARTBEAT: ${SYNC_THRESHOLDS_ON_HEARTBEAT:-false}
+      OFFLINE_TIMEOUT_SECONDS: 90
+      COMMAND_TIMEOUT_SECONDS: 10
+      NIGHT_TIMEZONE: Asia/Ho_Chi_Minh
+      NIGHT_START_HOUR: 20
+      NIGHT_END_HOUR: 6
+      SEED_DEFAULT_NODES: ${SEED_DEFAULT_NODES:-false}
+
+  web:
+    build:
+      context: ../frontend
+      args:
+        VITE_DATA_SOURCE: api
+        VITE_API_BASE_URL: https://${SITE_ADDRESS}/api
+        VITE_WS_URL: wss://${SITE_ADDRESS}/ws
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?SITE_ADDRESS chưa được cấu hình}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  mongodata:
+  mosquitto_data:
+  caddy_data:
+  caddy_config:
