@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import type { DeviceConfig } from '../../services/types'
+import type { ConfigPatch, DeviceConfig } from '../../services/types'
 import { useAuth } from '../../store/auth'
+import { useActions } from '../../store/actions'
 import { Button, Card, Field, Notice } from '../common/UI'
 import styles from '../../pages/Pages.module.css'
 export function ConfigForm({
@@ -11,12 +12,40 @@ export function ConfigForm({
   environment: boolean
 }) {
   const viewer = useAuth((s) => s.user?.role === 'VIEWER')
+  const actions = useActions()
   const [form, setForm] = useState(config)
-  const [notice, setNotice] = useState(false)
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
   const dirty = JSON.stringify(form) !== JSON.stringify(config)
-  function submit(event: FormEvent) {
+  function changes(): ConfigPatch {
+    const patch: ConfigPatch = {}
+    if (form.temperature_threshold !== config.temperature_threshold)
+      patch.temperature_threshold = form.temperature_threshold
+    if (form.humidity_threshold !== config.humidity_threshold)
+      patch.humidity_threshold = form.humidity_threshold
+    if (form.smoke_gas_threshold !== config.smoke_gas_threshold)
+      patch.smoke_gas_threshold = form.smoke_gas_threshold
+    if (form.telemetry_interval !== config.telemetry_interval)
+      patch.telemetry_interval = form.telemetry_interval
+    if (form.night_mode_enabled !== config.night_mode_enabled)
+      patch.night_mode_enabled = form.night_mode_enabled
+    return patch
+  }
+  async function submit(event: FormEvent) {
     event.preventDefault()
-    setNotice(true)
+    if (!dirty || pending) return
+    setPending(true)
+    setError('')
+    setSaved(false)
+    try {
+      setForm(await actions.updateConfig(config.device_id, changes()))
+      setSaved(true)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không lưu được cấu hình.')
+    } finally {
+      setPending(false)
+    }
   }
   return (
     <Card title="Cấu hình thiết bị">
@@ -91,25 +120,23 @@ export function ConfigForm({
           </p>
         ) : (
           <div className="row">
-            <Button type="submit" variant="primary" disabled={!dirty}>
-              Lưu cấu hình
+            <Button type="submit" variant="primary" disabled={!dirty || pending}>
+              {pending ? 'Đang lưu…' : 'Lưu cấu hình'}
             </Button>
             <Button
-              disabled={!dirty}
+              disabled={!dirty || pending}
               onClick={() => {
                 setForm(config)
-                setNotice(false)
+                setError('')
+                setSaved(false)
               }}
             >
               Hoàn tác
             </Button>
           </div>
         )}
-        {notice && (
-          <Notice>
-            Lưu cấu hình và nhật ký UPDATE_CONFIG được triển khai ở mốc 29/10. Chưa lưu thay đổi.
-          </Notice>
-        )}
+        {error && <Notice error>{error}</Notice>}
+        {saved && <Notice>Đã lưu cấu hình.</Notice>}
       </form>
     </Card>
   )

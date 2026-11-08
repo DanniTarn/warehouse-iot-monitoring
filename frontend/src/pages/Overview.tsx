@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useDashboard } from '../store/dashboard'
+import { useActions } from '../store/actions'
 import { MONITORING } from '../services/config'
 import { dateTime, number } from '../services/format'
 import {
+  ActionButton,
   Badge,
   Card,
   Connection,
-  DeferredButton,
   Heartbeat,
   PageHeader,
   Stat,
@@ -22,9 +23,13 @@ export default function Overview() {
   const data = useDashboard((s) => s.data)!
   const connection = useDashboard((s) => s.connection)
   const viewer = useAuth((s) => s.user?.role === 'VIEWER')
+  const actions = useActions()
   const [range, setRange] = useState(1)
   const envDevice = data.devices.find(
     (device) => device.device_code === MONITORING.environmentCode,
+  )
+  const secDevice = data.devices.find(
+    (device) => device.device_code === MONITORING.securityCode,
   )
   const envConfig = data.configs.find((config) => config.device_id === envDevice?.device_id)
   const env = data.telemetry.find((row) => row.device_code === MONITORING.environmentCode)
@@ -42,6 +47,10 @@ export default function Overview() {
   const humidityHigh = env?.humidity != null && env.humidity > humidityThreshold
   const temperatureHigh = env?.temperature != null && env.temperature > temperatureThreshold
   const smokeHigh = env?.smoke_gas_level != null && env.smoke_gas_level > smokeThreshold
+  const silenceBuzzer = () => {
+    if (!secDevice) return Promise.reject(new Error('Không tìm thấy thiết bị an ninh.'))
+    return actions.sendCommand(secDevice.device_id, 'BUZZER_OFF')
+  }
   return (
     <>
       <PageHeader
@@ -83,10 +92,19 @@ export default function Overview() {
             <span>Tài khoản Viewer chỉ có quyền xem.</span>
           ) : (
             <div className="row">
-              <DeferredButton milestone="24/10" disabled={!data.presentation.buzzer_sounding}>
+              <ActionButton
+                disabled={!data.presentation.buzzer_sounding || !secDevice}
+                action={silenceBuzzer}
+                success="Đã gửi lệnh tắt còi."
+              >
                 Tắt còi
-              </DeferredButton>
-              <DeferredButton milestone="24/10">Xác nhận đã xử lý</DeferredButton>
+              </ActionButton>
+              <ActionButton
+                action={() => actions.acknowledgeAlert(critical.alert_id)}
+                success="Đã xác nhận cảnh báo."
+              >
+                Xác nhận đã xử lý
+              </ActionButton>
             </div>
           )}
         </div>
@@ -201,13 +219,14 @@ export default function Overview() {
               {data.presentation.buzzer_sounding ? 'Đang kêu' : 'Tắt'}
             </Badge>
           </div>
-          <DeferredButton
-            milestone="24/10"
-            disabled={viewer || !data.presentation.buzzer_sounding}
+          <ActionButton
+            disabled={viewer || !data.presentation.buzzer_sounding || !secDevice}
+            action={silenceBuzzer}
+            success="Đã gửi lệnh tắt còi."
           >
             Tắt còi
-          </DeferredButton>
-          <span className="mono small muted">BUZZER_OFF · NODE2_SEC</span>
+          </ActionButton>
+          <span className="mono small muted">BUZZER_OFF · {MONITORING.securityCode}</span>
         </Card>
         <Card title="Thiết bị">
           {data.devices.slice(0, 2).map((device) => (
