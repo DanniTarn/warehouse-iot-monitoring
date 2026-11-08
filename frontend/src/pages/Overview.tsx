@@ -41,6 +41,10 @@ export default function Overview() {
   const series = envRows
     .filter((row) => Date.parse(row.recorded_at) >= newest - range * 3600000)
     .toReversed()
+  const period = {
+    start: series.reduce((oldest, row) => Math.min(oldest, Date.parse(row.recorded_at)), newest),
+    end: newest,
+  }
   const humidityThreshold = envConfig?.humidity_threshold ?? MONITORING.humidityThreshold
   const temperatureThreshold = envConfig?.temperature_threshold ?? 50
   const smokeThreshold = envConfig?.smoke_gas_threshold ?? MONITORING.smoke.threshold
@@ -188,6 +192,7 @@ export default function Overview() {
           color="series-temp"
           domain={[24, 32]}
           data={series}
+          period={period}
         />
         <SensorChart
           title="Độ ẩm"
@@ -196,8 +201,9 @@ export default function Overview() {
           field="humidity"
           color="series-humidity"
           domain={[50, 80]}
-          threshold={MONITORING.humidityThreshold}
+          threshold={humidityThreshold}
           data={series}
+          period={period}
         />
         <SensorChart
           title="Khói / khí gas"
@@ -206,8 +212,9 @@ export default function Overview() {
           field="smoke_gas_level"
           color="series-smoke"
           domain={MONITORING.smoke.domain}
-          threshold={MONITORING.smoke.threshold}
+          threshold={smokeThreshold}
           data={series}
+          period={period}
         />
       </section>
       <section className={styles.grid}>

@@ -20,7 +20,7 @@ export function dateTime(value: string | null, seconds = false) {
     hour12: false,
   }).format(new Date(value))
 }
-export function time(value: string) {
+export function time(value: string | number) {
   return new Intl.DateTimeFormat('vi-VN', {
     timeZone: TIME_ZONE,
     hour: '2-digit',
