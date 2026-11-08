@@ -41,10 +41,24 @@ export interface DashboardData {
     }[]
   }
 }
+export type HistoryTab = 'telemetry' | 'commands' | 'audit'
+export interface HistoryQuery {
+  tab: HistoryTab
+  from: string
+  to: string
+  deviceId?: number
+  offset?: number
+}
+export type HistoryRows =
+  | { tab: 'telemetry'; rows: Telemetry[] }
+  | { tab: 'commands'; rows: DeviceCommand[] }
+  | { tab: 'audit'; rows: AuditLog[] }
+
 export interface ApiClient {
   login(username: string, password: string): Promise<{ token: string; user: User }>
   me(token: string): Promise<User>
   dashboard(token: string): Promise<DashboardData>
+  history(token: string, query: HistoryQuery): Promise<HistoryRows>
   audit(token: string): Promise<AuditLog[]>
   acknowledgeAlert(token: string, alertId: number): Promise<Alert>
   sendCommand(

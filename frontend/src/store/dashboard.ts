@@ -19,6 +19,10 @@ const COMMAND_PROGRESS: Record<CommandStatus, number> = {
   ACKNOWLEDGED: 2,
   FAILED: 2,
 }
+
+function isTerminal(status: CommandStatus) {
+  return status === 'ACKNOWLEDGED' || status === 'FAILED'
+}
 const initialConnection: RealtimeState = dataSource === 'api' ? 'reconnecting' : 'live'
 
 export type DashboardChange =
@@ -152,12 +156,29 @@ export const useDashboard = create<DashboardState>((set) => ({
           const commands = known
             ? data.commands.map((item) =>
                 item.command_id === command.command_id &&
+                !isTerminal(item.status) &&
                 COMMAND_PROGRESS[command.status] >= COMMAND_PROGRESS[item.status]
                   ? command
                   : item,
               )
             : [command, ...data.commands].slice(0, COMMAND_LIMIT)
-          const fanMode = fanModeOf(command)
+          const newestFan = commands
+            .filter(
+              (item) =>
+                item.device_id === command.device_id &&
+                item.status === 'ACKNOWLEDGED' &&
+                item.command_type.startsWith('FAN_'),
+            )
+            .reduce<DeviceCommand | undefined>(
+              (latest, item) =>
+                !latest ||
+                Date.parse(item.sent_at) > Date.parse(latest.sent_at) ||
+                (item.sent_at === latest.sent_at && item.command_id > latest.command_id)
+                  ? item
+                  : latest,
+              undefined,
+            )
+          const fanMode = newestFan ? fanModeOf(newestFan) : null
           const configs = fanMode
             ? data.configs.map((config) =>
                 config.device_id === command.device_id
