@@ -9,6 +9,9 @@ import type {
   Warehouse,
 } from './types'
 import { mockApi } from './api.mock'
+import { realApi } from './api.real'
+
+export { ForbiddenError } from './http'
 
 export interface DashboardData {
   devices: Device[]
@@ -38,21 +41,20 @@ export interface ApiClient {
   me(token: string): Promise<User>
   dashboard(token: string): Promise<DashboardData>
 }
-export class ForbiddenError extends Error {
-  constructor() {
-    super('Bạn không có quyền thực hiện thao tác này.')
-  }
-}
-// The real REST adapter belongs to 20/10. Never silently present mock data as live API data.
-const source = import.meta.env.VITE_DATA_SOURCE || 'mock'
+
+export const dataSource: string = import.meta.env.VITE_DATA_SOURCE || 'mock'
 const unavailable = async (): Promise<never> => {
-  throw new Error(`Nguồn dữ liệu “${source}” chưa có trong mốc 15/10. Đặt VITE_DATA_SOURCE=mock.`)
+  throw new Error(
+    `Nguồn dữ liệu “${dataSource}” không được hỗ trợ. Đặt VITE_DATA_SOURCE=mock hoặc api.`,
+  )
 }
 export const api: ApiClient =
-  source === 'mock'
+  dataSource === 'mock'
     ? mockApi
-    : {
-        login: unavailable,
-        me: unavailable,
-        dashboard: unavailable,
-      }
+    : dataSource === 'api'
+      ? realApi
+      : {
+          login: unavailable,
+          me: unavailable,
+          dashboard: unavailable,
+        }

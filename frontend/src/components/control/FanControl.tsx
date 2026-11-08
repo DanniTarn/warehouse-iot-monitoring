@@ -6,12 +6,13 @@ import styles from '../common/UI.module.css'
 export function FanControl({ detailed = false }: { detailed?: boolean }) {
   const viewer = useAuth((s) => s.user?.role === 'VIEWER')
   const mode = useDashboard((s) => s.data?.presentation.fan_mode)
+  const running = useDashboard((s) => s.data?.presentation.fan_running)
   const [notice, setNotice] = useState(false)
   return (
     <div className="stack">
       <div className="row between">
         <strong>Quạt hút · Relay 5V</strong>
-        <Badge tone="good">Đang chạy</Badge>
+        <Badge tone={running ? 'good' : 'neutral'}>{running ? 'Đang chạy' : 'Đang tắt'}</Badge>
       </div>
       <div className={styles.segmented} role="group" aria-label="Chế độ quạt">
         {[

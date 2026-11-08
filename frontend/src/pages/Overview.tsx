@@ -20,21 +20,28 @@ import ui from '../components/common/UI.module.css'
 import styles from './Pages.module.css'
 export default function Overview() {
   const data = useDashboard((s) => s.data)!
+  const connection = useDashboard((s) => s.connection)
   const viewer = useAuth((s) => s.user?.role === 'VIEWER')
   const [range, setRange] = useState(1)
+  const envDevice = data.devices.find(
+    (device) => device.device_code === MONITORING.environmentCode,
+  )
+  const envConfig = data.configs.find((config) => config.device_id === envDevice?.device_id)
   const env = data.telemetry.find((row) => row.device_code === MONITORING.environmentCode)
   const sec = data.telemetry.find((row) => row.device_code === MONITORING.securityCode)
   const open = data.alerts.filter((alert) => !alert.is_acknowledged)
   const critical = open.find((alert) => alert.severity === 'CRITICAL')
-  const series = data.telemetry
-    .filter((row) => row.device_id === 1)
+  const envRows = data.telemetry.filter((row) => row.device_id === envDevice?.device_id)
+  const newest = envRows.reduce((latest, row) => Math.max(latest, Date.parse(row.recorded_at)), 0)
+  const series = envRows
+    .filter((row) => Date.parse(row.recorded_at) >= newest - range * 3600000)
     .toReversed()
-    .map((row, index, rows) => ({
-      ...row,
-      recorded_at: new Date(
-        new Date(data.snapshot_at).getTime() - (rows.length - 1 - index) * range * 60000,
-      ).toISOString(),
-    }))
+  const humidityThreshold = envConfig?.humidity_threshold ?? MONITORING.humidityThreshold
+  const temperatureThreshold = envConfig?.temperature_threshold ?? 50
+  const smokeThreshold = envConfig?.smoke_gas_threshold ?? MONITORING.smoke.threshold
+  const humidityHigh = env?.humidity != null && env.humidity > humidityThreshold
+  const temperatureHigh = env?.temperature != null && env.temperature > temperatureThreshold
+  const smokeHigh = env?.smoke_gas_level != null && env.smoke_gas_level > smokeThreshold
   return (
     <>
       <PageHeader
@@ -42,7 +49,11 @@ export default function Overview() {
         subtitle={
           <div className="row">
             <span>Kho chính</span>
-            <Badge tone="good">Trực tiếp</Badge>
+            {connection === 'live' ? (
+              <Badge tone="good">Trực tiếp</Badge>
+            ) : (
+              <Badge tone="neutral">Mất kết nối, đang thử lại…</Badge>
+            )}
             <span className="mono small">Cập nhật {dateTime(data.snapshot_at, true)}</span>
           </div>
         }
@@ -64,7 +75,9 @@ export default function Overview() {
               {dateTime(critical.created_at, true)}
             </span>
             <strong>{critical.alert_message}</strong>
-            <span>Còi và đèn LED đỏ đang báo động tại chỗ.</span>
+            {data.presentation.buzzer_sounding && (
+              <span>Còi và đèn LED đỏ đang báo động tại chỗ.</span>
+            )}
           </div>
           {viewer ? (
             <span>Tài khoản Viewer chỉ có quyền xem.</span>
@@ -84,36 +97,68 @@ export default function Overview() {
           sensor="DHT22"
           value={number(env?.temperature)}
           unit="°C"
-          status="Bình thường"
+          status={
+            env?.temperature == null
+              ? 'Chưa có dữ liệu'
+              : temperatureHigh
+                ? `Vượt ngưỡng ${temperatureThreshold} °C`
+                : 'Bình thường'
+          }
+          tone={env?.temperature == null ? 'muted' : temperatureHigh ? 'warning' : 'good'}
         />
         <Stat
           label="Độ ẩm"
           sensor="DHT22"
           value={number(env?.humidity)}
           unit="%"
-          status="Vượt ngưỡng 65 %"
-          tone="warning"
+          status={
+            env?.humidity == null
+              ? 'Chưa có dữ liệu'
+              : humidityHigh
+                ? `Vượt ngưỡng ${humidityThreshold} %`
+                : 'Bình thường'
+          }
+          tone={env?.humidity == null ? 'muted' : humidityHigh ? 'warning' : 'good'}
         />
         <Stat
           label="Khói / khí gas"
           sensor="MQ-2"
           value={number(env?.smoke_gas_level, 0)}
           unit={MONITORING.smoke.unit}
-          status="Bình thường"
+          status={
+            env?.smoke_gas_level == null
+              ? 'Chưa có dữ liệu'
+              : smokeHigh
+                ? `Vượt ngưỡng ${smokeThreshold} ${MONITORING.smoke.unit}`
+                : 'Bình thường'
+          }
+          tone={env?.smoke_gas_level == null ? 'muted' : smokeHigh ? 'warning' : 'good'}
         />
         <Stat
           label="Cửa kho"
           sensor="MC-38"
-          value={sec?.door_status ? 'Mở' : 'Đóng'}
-          status="Ngoài giờ giới nghiêm"
-          tone="critical"
+          value={sec?.door_status == null ? '—' : sec.door_status ? 'Mở' : 'Đóng'}
+          status={
+            sec?.door_status == null
+              ? 'Chưa có dữ liệu'
+              : sec.door_status
+                ? 'Ngoài giờ giới nghiêm'
+                : 'Đóng'
+          }
+          tone={sec?.door_status ? 'critical' : 'good'}
         />
         <Stat
           label="Chuyển động"
           sensor="HC-SR501"
-          value={sec?.motion_detected ? 'Có' : 'Không'}
-          status="Lần cuối 18:52"
-          tone="muted"
+          value={sec?.motion_detected == null ? '—' : sec.motion_detected ? 'Có' : 'Không'}
+          status={
+            sec?.motion_detected == null
+              ? 'Chưa có dữ liệu'
+              : sec.motion_detected
+                ? 'Có chuyển động'
+                : 'Không có chuyển động'
+          }
+          tone={sec?.motion_detected ? 'critical' : 'muted'}
         />
       </section>
       <section aria-label="Biểu đồ cảm biến" className={styles.grid}>
@@ -152,9 +197,14 @@ export default function Overview() {
           <FanControl />
           <div className="row between">
             <strong>Còi báo động</strong>
-            <Badge tone="critical">Đang kêu</Badge>
+            <Badge tone={data.presentation.buzzer_sounding ? 'critical' : 'neutral'}>
+              {data.presentation.buzzer_sounding ? 'Đang kêu' : 'Tắt'}
+            </Badge>
           </div>
-          <DeferredButton milestone="24/10" disabled={viewer}>
+          <DeferredButton
+            milestone="24/10"
+            disabled={viewer || !data.presentation.buzzer_sounding}
+          >
             Tắt còi
           </DeferredButton>
           <span className="mono small muted">BUZZER_OFF · NODE2_SEC</span>
@@ -172,7 +222,9 @@ export default function Overview() {
           ))}
           <div className="row between">
             <span>Chế độ ban đêm</span>
-            <Badge tone="info">Đang bật</Badge>
+            <Badge tone={envConfig?.night_mode_enabled ? 'info' : 'neutral'}>
+              {envConfig?.night_mode_enabled ? 'Đang bật' : 'Đang tắt'}
+            </Badge>
           </div>
           <div className="row between">
             <span>Đèn LED</span>

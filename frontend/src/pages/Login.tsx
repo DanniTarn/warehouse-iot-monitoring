@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
+import { dataSource } from '../services/api'
 import { useAuth } from '../store/auth'
 import { Brand } from '../components/common/AppShell'
 import { Button, Field, Notice } from '../components/common/UI'
@@ -84,7 +85,11 @@ export default function Login() {
           <p className="small">
             Quên mật khẩu hoặc tài khoản bị khóa? Liên hệ quản trị viên để được cấp lại.
           </p>
-          <p className="small">Bản giao diện · Dữ liệu mô phỏng</p>
+          <p className="small">
+            {dataSource === 'api'
+              ? 'Kết nối trực tiếp tới hệ thống đang chạy.'
+              : 'Bản giao diện · Dữ liệu mô phỏng'}
+          </p>
         </form>
       </main>
     </div>

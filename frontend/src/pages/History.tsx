@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useDashboard } from '../store/dashboard'
-import { dateTime, number } from '../services/format'
+import { dateTime, number, TIME_ZONE } from '../services/format'
 import { MONITORING } from '../services/config'
 import {
   Button,
@@ -16,14 +16,24 @@ import {
 import { CommandTable } from '../components/common/CommandTable'
 import ui from '../components/common/UI.module.css'
 import styles from './Pages.module.css'
+function todayInVietnam() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const value = (type: string) => parts.find((part) => part.type === type)?.value
+  return `${value('year')}-${value('month')}-${value('day')}`
+}
 export default function History() {
   const data = useDashboard((s) => s.data)!
   const admin = useAuth((s) => s.user?.role === 'ADMIN')
   const [params] = useSearchParams()
   const tab = params.get('tab') || 'telemetry'
   const [device, setDevice] = useState('')
-  const [from, setFrom] = useState('2026-10-07')
-  const [to, setTo] = useState('2026-10-13')
+  const [from, setFrom] = useState(todayInVietnam)
+  const [to, setTo] = useState(todayInVietnam)
   const [page, setPage] = useState(0)
   if (!['telemetry', 'commands', 'audit'].includes(tab) || (tab === 'audit' && !admin))
     return <Navigate to="/history?tab=telemetry" replace />
