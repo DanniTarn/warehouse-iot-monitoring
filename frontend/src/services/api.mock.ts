@@ -519,7 +519,7 @@ export const mockApi: ApiClient = {
       user_id: Math.max(0, ...users.map((item) => item.user_id)) + 1,
       username: input.username,
       full_name: input.full_name,
-      email: input.email,
+      email: input.email || null,
       role: input.role,
       is_active: true,
       created_at: new Date().toISOString(),
@@ -538,9 +538,7 @@ export const mockApi: ApiClient = {
     const account = users.find((item) => item.user_id === userId)
     if (!account) throw new HttpError(404, 'Không tìm thấy tài khoản.')
     const losesAdmin =
-      patch.role !== undefined && patch.role !== 'ADMIN'
-        ? true
-        : patch.is_active === false
+      patch.is_active === false || (patch.role !== undefined && patch.role !== 'ADMIN')
     if (userId === user.user_id && losesAdmin) {
       throw new ForbiddenError('Không thể tự khóa hoặc hạ quyền tài khoản đang đăng nhập.')
     }
