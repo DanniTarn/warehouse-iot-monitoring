@@ -139,8 +139,9 @@
   }
   .nav {
     flex-direction: row;
-    flex-wrap: wrap;
     gap: 5px;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
   .nav a {
     flex: none;

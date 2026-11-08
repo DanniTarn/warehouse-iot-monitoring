@@ -26,6 +26,7 @@ export function AppShell() {
   const { data, loading, error, load, reset, applyEvent, setConnection } = useDashboard()
   const location = useLocation()
   const connected = useRef(false)
+  const navRef = useRef<HTMLElement>(null)
   useEffect(() => {
     if (token) void load(token)
     return reset
@@ -55,6 +56,13 @@ export function AppShell() {
     }
     document.title = `${titles[location.pathname] || 'Chi tiết thiết bị'} · Giám sát kho`
   }, [location.pathname])
+  useEffect(() => {
+    const bar = navRef.current
+    const active = bar?.querySelector<HTMLElement>('[aria-current="page"]')
+    if (bar && active)
+      bar.scrollLeft =
+        active.offsetLeft - bar.offsetLeft - (bar.clientWidth - active.offsetWidth) / 2
+  }, [location.pathname])
   const nav: [string, string, IconName][] = [
     ['/', 'Tổng quan', 'overview'],
     ['/devices', 'Thiết bị', 'devices'],
@@ -69,7 +77,7 @@ export function AppShell() {
       </a>
       <aside className={styles.sidebar}>
         <Brand />
-        <nav className={styles.nav} aria-label="Điều hướng chính">
+        <nav ref={navRef} className={styles.nav} aria-label="Điều hướng chính">
           {nav.map(([to, title, icon]) => (
             <NavLink key={to} to={to} end={to === '/'}>
               <Icon name={icon} />
