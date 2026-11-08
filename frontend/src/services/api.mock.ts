@@ -1,5 +1,16 @@
 import type { ApiClient, DashboardData } from './api'
-import type { Alert, Device, DeviceCommand, Role, Telemetry, User } from './types'
+import { derivePresentation } from './dashboardView'
+import { ForbiddenError, HttpError } from './http'
+import type {
+  Alert,
+  ConfigPatch,
+  Device,
+  DeviceCommand,
+  DeviceConfig,
+  Role,
+  Telemetry,
+  User,
+} from './types'
 import { MONITORING } from './config'
 
 // Development fixtures only. This password and these tokens are not real credentials.
@@ -168,6 +179,8 @@ const alerts: Alert[] = alertSeeds.map(
   }),
 )
 const commandSeeds: [number, DeviceCommand['command_type'], string, DeviceCommand['status']][] = [
+  [2, 'BUZZER_ON', stamp('13', '21:37:14'), 'ACKNOWLEDGED'],
+  [1, 'FAN_AUTO', stamp('13', '21:31:45'), 'ACKNOWLEDGED'],
   [1, 'FAN_OFF', stamp('13', '18:05:22'), 'ACKNOWLEDGED'],
   [1, 'FAN_ON', stamp('13', '14:47:10'), 'ACKNOWLEDGED'],
   [2, 'BUZZER_OFF', stamp('12', '23:19:52'), 'ACKNOWLEDGED'],
@@ -205,6 +218,17 @@ const telemetry: Telemetry[] = Array.from({ length: 120 }, (_, index) => {
     recorded_at: new Date(new Date(snapshot).getTime() - index * 2500).toISOString(),
   }
 })
+const warehouses = [{ warehouse_id: 1, warehouse_name: 'Kho chính', location_address: null }]
+const configs: DeviceConfig[] = devices.map((device) => ({
+  device_id: device.device_id,
+  humidity_threshold: device.device_code.endsWith('_ENV') ? MONITORING.humidityThreshold : null,
+  smoke_gas_threshold: device.device_code.endsWith('_ENV') ? MONITORING.smoke.threshold : null,
+  temperature_threshold: 50,
+  telemetry_interval: 5,
+  night_mode_enabled: true,
+  fan_mode: 'AUTO',
+  updated_at: snapshot,
+}))
 const data: DashboardData = {
   devices,
   users,
@@ -212,17 +236,8 @@ const data: DashboardData = {
   commands,
   telemetry,
   snapshot_at: snapshot,
-  configs: devices.map((device) => ({
-    device_id: device.device_id,
-    humidity_threshold: device.device_code.endsWith('_ENV') ? MONITORING.humidityThreshold : null,
-    smoke_gas_threshold: device.device_code.endsWith('_ENV') ? MONITORING.smoke.threshold : null,
-    temperature_threshold: 50,
-    telemetry_interval: 5,
-    night_mode_enabled: true,
-    fan_mode: 'AUTO' as const,
-    updated_at: snapshot,
-  })),
-  warehouses: [{ warehouse_id: 1, warehouse_name: 'Kho chính', location_address: null }],
+  configs,
+  warehouses,
   audit: [
     {
       log_id: 1,
@@ -270,32 +285,38 @@ const data: DashboardData = {
       created_at: stamp('10', '15:30:00'),
     },
   ],
-  presentation: {
-    fan_mode: 'auto',
-    fan_running: true,
-    buzzer_sounding: true,
-    led: 'Đỏ nhấp nháy',
-    security_events: [
-      {
-        recorded_at: stamp('13', '21:37:12'),
-        sensor: 'MC-38',
-        description: 'Cửa mở ngoài giờ',
-        alert_type: 'DOOR_BREACH',
-      },
-      {
-        recorded_at: stamp('13', '18:52:10'),
-        sensor: 'HC-SR501',
-        description: 'Phát hiện chuyển động',
-        alert_type: null,
-      },
-    ],
-  },
+  presentation: derivePresentation({ devices, configs, telemetry, alerts, commands }),
 }
 const wait = () => new Promise((resolve) => setTimeout(resolve, 180))
 function sessionUser(token: string) {
   const user = users.find((item) => `mock-session-${item.username}` === token && item.is_active)
   if (!user) throw new Error('Phiên đăng nhập đã hết hạn.')
   return user
+}
+function requireRole(user: User, roles: Role[]) {
+  if (!roles.includes(user.role)) throw new ForbiddenError()
+}
+function findDevice(deviceId: number) {
+  const device = devices.find((item) => item.device_id === deviceId)
+  if (!device) throw new HttpError(404, 'Không tìm thấy thiết bị.')
+  return device
+}
+function findConfig(deviceId: number) {
+  const config = configs.find((item) => item.device_id === deviceId)
+  if (!config) throw new HttpError(404, 'Không tìm thấy cấu hình thiết bị.')
+  return config
+}
+function defaultConfig(deviceId: number, code: string): DeviceConfig {
+  return {
+    device_id: deviceId,
+    humidity_threshold: code.endsWith('_ENV') ? MONITORING.humidityThreshold : null,
+    smoke_gas_threshold: code.endsWith('_ENV') ? MONITORING.smoke.threshold : null,
+    temperature_threshold: 50,
+    telemetry_interval: 5,
+    night_mode_enabled: true,
+    fan_mode: 'AUTO',
+    updated_at: new Date().toISOString(),
+  }
 }
 export const mockApi: ApiClient = {
   async login(username, password) {
@@ -315,6 +336,223 @@ export const mockApi: ApiClient = {
       ...data,
       users: user.role === 'ADMIN' ? users : [],
       audit: user.role === 'ADMIN' ? data.audit : [],
+      presentation: derivePresentation(data),
     })
+  },
+  async acknowledgeAlert(token, alertId) {
+    await wait()
+    const user = sessionUser(token)
+    requireRole(user, ['ADMIN', 'OPERATOR'])
+    const alert = alerts.find((item) => item.alert_id === alertId)
+    if (!alert || alert.is_acknowledged) {
+      throw new HttpError(409, 'Cảnh báo không tồn tại hoặc đã được xử lý.')
+    }
+    alert.is_acknowledged = true
+    alert.resolved_by_user_id = user.user_id
+    alert.resolved_by_username = user.username
+    alert.resolved_at = new Date().toISOString()
+    return structuredClone(alert)
+  },
+  async sendCommand(token, deviceId, type) {
+    await wait()
+    const user = sessionUser(token)
+    requireRole(user, ['ADMIN', 'OPERATOR'])
+    const device = findDevice(deviceId)
+    if (device.lifecycle_status !== 'ACTIVE') {
+      throw new HttpError(409, 'Thiết bị chưa kích hoạt hoặc đang bị khóa.')
+    }
+    if (type.startsWith('FAN_') && !device.device_code.endsWith('_ENV')) {
+      throw new HttpError(400, 'Chỉ có thể điều khiển quạt ở Node môi trường.')
+    }
+    if (type.startsWith('BUZZER_') && !device.device_code.endsWith('_SEC')) {
+      throw new HttpError(400, 'Chỉ có thể điều khiển còi ở Node an ninh.')
+    }
+    const sentAt = new Date().toISOString()
+    const command: DeviceCommand = {
+      command_id: Math.max(0, ...commands.map((item) => item.command_id)) + 1,
+      device_id: deviceId,
+      device_code: device.device_code,
+      user_id: user.user_id,
+      username: user.username,
+      command_type: type,
+      parameters: null,
+      status: 'ACKNOWLEDGED',
+      sent_at: sentAt,
+      acknowledged_at: sentAt,
+    }
+    commands.unshift(command)
+    if (type === 'FAN_ON' || type === 'FAN_OFF' || type === 'FAN_AUTO') {
+      const config = findConfig(deviceId)
+      config.fan_mode = type === 'FAN_ON' ? 'ON' : type === 'FAN_OFF' ? 'OFF' : 'AUTO'
+      config.updated_at = sentAt
+    }
+    return structuredClone(command)
+  },
+  async registerDevice(token, input) {
+    await wait()
+    const user = sessionUser(token)
+    requireRole(user, ['ADMIN'])
+    if (!/^NODE[0-9]+_(ENV|SEC)$/.test(input.device_code)) {
+      throw new HttpError(400, 'Mã thiết bị cần có dạng NODE1_ENV hoặc NODE2_SEC.')
+    }
+    if (devices.some((item) => item.device_code === input.device_code)) {
+      throw new HttpError(409, 'Mã thiết bị đã tồn tại.')
+    }
+    const mac = input.mac_address.toUpperCase()
+    if (!/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(mac)) {
+      throw new HttpError(400, 'Địa chỉ MAC không hợp lệ.')
+    }
+    const deviceId = Math.max(0, ...devices.map((item) => item.device_id)) + 1
+    const warehouse = warehouses.find((item) => item.warehouse_id === input.warehouse_id)
+    const owner = users.find((item) => item.user_id === input.assigned_user_id)
+    const device: Device = {
+      device_id: deviceId,
+      device_code: input.device_code,
+      device_name: input.device_name,
+      warehouse_id: input.warehouse_id,
+      warehouse_name: warehouse?.warehouse_name,
+      assigned_user_id: input.assigned_user_id,
+      assigned_username: owner?.username,
+      mac_address: mac,
+      firmware_version: null,
+      ip_address: null,
+      lifecycle_status: 'REGISTERED',
+      last_heartbeat: null,
+      online: false,
+      created_at: new Date().toISOString(),
+    }
+    const config = defaultConfig(deviceId, device.device_code)
+    devices.push(device)
+    configs.push(config)
+    return {
+      device: structuredClone(device),
+      config: structuredClone(config),
+      auth_token: `mock-token-${device.device_code}-${deviceId}`,
+    }
+  },
+  async activateDevice(token, deviceId) {
+    await wait()
+    const user = sessionUser(token)
+    requireRole(user, ['ADMIN'])
+    const device = findDevice(deviceId)
+    if (device.lifecycle_status !== 'REGISTERED') {
+      throw new HttpError(409, 'Thiết bị không ở trạng thái chờ kích hoạt hoặc thiếu token.')
+    }
+    device.lifecycle_status = 'ACTIVE'
+    return structuredClone(device)
+  },
+  async setLifecycle(token, deviceId, status) {
+    await wait()
+    const user = sessionUser(token)
+    requireRole(user, ['ADMIN'])
+    const device = findDevice(deviceId)
+    if (device.lifecycle_status === 'DECOMMISSIONED') {
+      throw new HttpError(409, 'Thiết bị đã thu hồi không thể kích hoạt lại.')
+    }
+    if (device.lifecycle_status === 'REGISTERED') {
+      throw new HttpError(409, 'Hãy kích hoạt thiết bị trước khi thay đổi vòng đời.')
+    }
+    device.lifecycle_status = status
+    if (status === 'DECOMMISSIONED') device.online = false
+    if (status === 'ACTIVE') device.last_heartbeat = null
+    return structuredClone(device)
+  },
+  async rotateDeviceToken(token, deviceId) {
+    await wait()
+    const user = sessionUser(token)
+    requireRole(user, ['ADMIN'])
+    const device = findDevice(deviceId)
+    if (device.lifecycle_status === 'DECOMMISSIONED') {
+      throw new HttpError(404, 'Không tìm thấy thiết bị có thể cấp lại token.')
+    }
+    return `mock-token-${device.device_code}-${Date.now()}`
+  },
+  async updateConfig(token, deviceId, patch) {
+    await wait()
+    const user = sessionUser(token)
+    requireRole(user, ['ADMIN', 'OPERATOR'])
+    const config = findConfig(deviceId)
+    const fields: (keyof ConfigPatch)[] = [
+      'temperature_threshold',
+      'humidity_threshold',
+      'smoke_gas_threshold',
+      'telemetry_interval',
+      'night_mode_enabled',
+    ]
+    if (!fields.some((field) => patch[field] !== undefined)) {
+      throw new HttpError(400, 'Chưa có cấu hình cần thay đổi.')
+    }
+    if (patch.temperature_threshold !== undefined) {
+      config.temperature_threshold = patch.temperature_threshold
+    }
+    if (patch.humidity_threshold !== undefined) config.humidity_threshold = patch.humidity_threshold
+    if (patch.smoke_gas_threshold !== undefined) {
+      config.smoke_gas_threshold = patch.smoke_gas_threshold
+    }
+    if (patch.telemetry_interval !== undefined) config.telemetry_interval = patch.telemetry_interval
+    if (patch.night_mode_enabled !== undefined) {
+      config.night_mode_enabled = patch.night_mode_enabled
+    }
+    config.updated_at = new Date().toISOString()
+    return structuredClone(config)
+  },
+  async createUser(token, input) {
+    await wait()
+    const user = sessionUser(token)
+    requireRole(user, ['ADMIN'])
+    if (!/^[a-zA-Z0-9_.-]+$/.test(input.username)) {
+      throw new HttpError(
+        400,
+        'Tên đăng nhập chỉ gồm chữ, số, dấu chấm, gạch ngang hoặc gạch dưới.',
+      )
+    }
+    if (input.password.length < 8) {
+      throw new HttpError(400, 'Mật khẩu cần ít nhất 8 ký tự.')
+    }
+    if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) {
+      throw new HttpError(400, 'Email không hợp lệ.')
+    }
+    if (users.some((item) => item.username === input.username)) {
+      throw new HttpError(409, 'Tên đăng nhập đã tồn tại.')
+    }
+    const account: User = {
+      user_id: Math.max(0, ...users.map((item) => item.user_id)) + 1,
+      username: input.username,
+      full_name: input.full_name,
+      email: input.email,
+      role: input.role,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      last_login: null,
+    }
+    users.push(account)
+    return structuredClone(account)
+  },
+  async updateUser(token, userId, patch) {
+    await wait()
+    const user = sessionUser(token)
+    requireRole(user, ['ADMIN'])
+    if (patch.role === undefined && patch.is_active === undefined) {
+      throw new HttpError(400, 'Chưa có dữ liệu cập nhật.')
+    }
+    const account = users.find((item) => item.user_id === userId)
+    if (!account) throw new HttpError(404, 'Không tìm thấy tài khoản.')
+    const losesAdmin =
+      patch.role !== undefined && patch.role !== 'ADMIN'
+        ? true
+        : patch.is_active === false
+    if (userId === user.user_id && losesAdmin) {
+      throw new ForbiddenError('Không thể tự khóa hoặc hạ quyền tài khoản đang đăng nhập.')
+    }
+    if (
+      account.role === 'ADMIN' &&
+      losesAdmin &&
+      users.filter((item) => item.role === 'ADMIN' && item.is_active).length < 2
+    ) {
+      throw new HttpError(409, 'Không thể khóa hoặc hạ quyền quản trị viên cuối cùng.')
+    }
+    if (patch.role !== undefined) account.role = patch.role
+    if (patch.is_active !== undefined) account.is_active = patch.is_active
+    return structuredClone(account)
   },
 }

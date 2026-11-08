@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { DashboardData } from '../services/api'
 import type { RealtimeEvent } from '../services/realtime'
-import type { Alert, Device, DeviceCommand, DeviceConfig, Telemetry } from '../services/types'
+import type { Alert, Device, DeviceCommand, DeviceConfig, Telemetry, User } from '../services/types'
 import { useDashboard } from './dashboard'
 
 const at = (minute: number) => `2026-11-08T10:${String(minute).padStart(2, '0')}:00+07:00`
@@ -80,6 +80,19 @@ function alert(alert_id: number, overrides: Partial<Alert> = {}): Alert {
     created_at: at(10),
     resolved_at: null,
     ...overrides,
+  }
+}
+
+function user(user_id: number): User {
+  return {
+    user_id,
+    username: `user${user_id}`,
+    full_name: `Người dùng ${user_id}`,
+    email: null,
+    role: 'VIEWER',
+    is_active: true,
+    created_at: at(0),
+    last_login: null,
   }
 }
 
@@ -228,6 +241,61 @@ describe('dashboard applyEvent command status', () => {
     commands = useDashboard.getState().data!.commands
     expect(commands.map((item) => item.command_id)).toEqual([2, 1])
     expect(useDashboard.getState().data!.presentation.buzzer_sounding).toBe(true)
+  })
+})
+
+describe('dashboard local upserts', () => {
+  it('inserts a newly registered device and replaces a saved one', () => {
+    load()
+    useDashboard.getState().applyEvent({
+      type: 'device_saved',
+      data: { ...device(3), device_code: 'NODE3_ENV', device_name: 'Node 3 mới' },
+    })
+    let devices = useDashboard.getState().data!.devices
+    expect(devices.map((item) => item.device_id)).toEqual([1, 2, 3])
+
+    useDashboard.getState().applyEvent({
+      type: 'device_saved',
+      data: { ...device(1), lifecycle_status: 'MAINTENANCE' },
+    })
+    devices = useDashboard.getState().data!.devices
+    expect(devices).toHaveLength(3)
+    expect(devices[0].lifecycle_status).toBe('MAINTENANCE')
+  })
+
+  it('upserts a saved config and recomputes the fan mode', () => {
+    load()
+    useDashboard.getState().applyEvent({
+      type: 'config_saved',
+      data: { ...config(1), fan_mode: 'OFF' },
+    })
+    let data = useDashboard.getState().data!
+    expect(data.configs).toHaveLength(2)
+    expect(data.configs[0].fan_mode).toBe('OFF')
+    expect(data.presentation.fan_mode).toBe('off')
+
+    useDashboard.getState().applyEvent({
+      type: 'config_saved',
+      data: { ...config(1), fan_mode: 'ON', telemetry_interval: 30 },
+    })
+    data = useDashboard.getState().data!
+    expect(data.configs).toHaveLength(2)
+    expect(data.configs[0]).toMatchObject({ fan_mode: 'ON', telemetry_interval: 30 })
+    expect(data.presentation.fan_mode).toBe('on')
+  })
+
+  it('inserts and replaces users by user_id', () => {
+    load(dashboard({ users: [user(1)] }))
+    useDashboard.getState().applyEvent({ type: 'user_saved', data: user(2) })
+    expect(useDashboard.getState().data!.users.map((item) => item.user_id)).toEqual([1, 2])
+
+    useDashboard.getState().applyEvent({
+      type: 'user_saved',
+      data: { ...user(2), full_name: 'Tên đã đổi', is_active: false },
+    })
+    const users = useDashboard.getState().data!.users
+    expect(users).toHaveLength(2)
+    expect(users[1]).toMatchObject({ full_name: 'Tên đã đổi', is_active: false })
   })
 })
 

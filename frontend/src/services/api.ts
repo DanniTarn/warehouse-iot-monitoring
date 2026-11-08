@@ -1,9 +1,14 @@
 import type {
   Alert,
   AuditLog,
+  ConfigPatch,
   Device,
   DeviceCommand,
   DeviceConfig,
+  ManualCommandType,
+  NewDevice,
+  NewUser,
+  Role,
   Telemetry,
   User,
   Warehouse,
@@ -40,6 +45,30 @@ export interface ApiClient {
   login(username: string, password: string): Promise<{ token: string; user: User }>
   me(token: string): Promise<User>
   dashboard(token: string): Promise<DashboardData>
+  acknowledgeAlert(token: string, alertId: number): Promise<Alert>
+  sendCommand(
+    token: string,
+    deviceId: number,
+    type: ManualCommandType,
+  ): Promise<DeviceCommand>
+  registerDevice(
+    token: string,
+    input: NewDevice,
+  ): Promise<{ device: Device; config: DeviceConfig; auth_token: string }>
+  activateDevice(token: string, deviceId: number): Promise<Device>
+  setLifecycle(
+    token: string,
+    deviceId: number,
+    status: 'ACTIVE' | 'MAINTENANCE' | 'DECOMMISSIONED',
+  ): Promise<Device>
+  rotateDeviceToken(token: string, deviceId: number): Promise<string>
+  updateConfig(token: string, deviceId: number, patch: ConfigPatch): Promise<DeviceConfig>
+  createUser(token: string, input: NewUser): Promise<User>
+  updateUser(
+    token: string,
+    userId: number,
+    patch: { role?: Role; is_active?: boolean },
+  ): Promise<User>
 }
 
 export const dataSource: string = import.meta.env.VITE_DATA_SOURCE || 'mock'
@@ -48,13 +77,6 @@ const unavailable = async (): Promise<never> => {
     `Nguồn dữ liệu “${dataSource}” không được hỗ trợ. Đặt VITE_DATA_SOURCE=mock hoặc api.`,
   )
 }
+const unavailableApi = new Proxy({} as ApiClient, { get: () => unavailable })
 export const api: ApiClient =
-  dataSource === 'mock'
-    ? mockApi
-    : dataSource === 'api'
-      ? realApi
-      : {
-          login: unavailable,
-          me: unavailable,
-          dashboard: unavailable,
-        }
+  dataSource === 'mock' ? mockApi : dataSource === 'api' ? realApi : unavailableApi

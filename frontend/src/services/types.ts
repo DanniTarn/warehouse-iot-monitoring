@@ -1,6 +1,7 @@
 export type Role = 'ADMIN' | 'OPERATOR' | 'VIEWER'
 export type LifecycleStatus = 'REGISTERED' | 'ACTIVE' | 'OFFLINE' | 'MAINTENANCE' | 'DECOMMISSIONED'
 export type CommandType = 'FAN_ON' | 'FAN_OFF' | 'FAN_AUTO' | 'BUZZER_ON' | 'BUZZER_OFF'
+export type ManualCommandType = 'FAN_ON' | 'FAN_OFF' | 'FAN_AUTO' | 'BUZZER_OFF'
 export type CommandStatus = 'PENDING' | 'SENT' | 'ACKNOWLEDGED' | 'FAILED'
 export type Severity = 'INFO' | 'WARNING' | 'CRITICAL'
 export type FanMode = 'AUTO' | 'ON' | 'OFF'
@@ -98,4 +99,25 @@ export interface AuditLog {
   ip_client: string | null
   details: string | null
   created_at: string
+}
+export interface NewDevice {
+  device_name: string
+  device_code: string
+  mac_address: string
+  warehouse_id: number | null
+  assigned_user_id: number | null
+}
+export interface NewUser {
+  username: string
+  full_name: string
+  email: string | null
+  role: Role
+  password: string
+}
+export interface ConfigPatch {
+  temperature_threshold?: number
+  humidity_threshold?: number | null
+  smoke_gas_threshold?: number | null
+  telemetry_interval?: number
+  night_mode_enabled?: boolean
 }
