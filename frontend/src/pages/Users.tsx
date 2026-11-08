@@ -1,12 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../store/auth'
 import { useDashboard } from '../store/dashboard'
+import { useActions } from '../store/actions'
 import { dateTime } from '../services/format'
+import type { Role } from '../services/types'
 import {
+  ActionButton,
   Badge,
   Button,
   Card,
-  DeferredButton,
   Field,
   Notice,
   PageHeader,
@@ -16,10 +18,43 @@ import styles from './Pages.module.css'
 export default function Users() {
   const data = useDashboard((s) => s.data)!
   const self = useAuth((s) => s.user?.user_id)
-  const [notice, setNotice] = useState('')
-  function submit(event: FormEvent<HTMLFormElement>) {
+  const actions = useActions()
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [pending, setPending] = useState(false)
+  async function run(action: () => Promise<unknown>, success: string) {
+    setError('')
+    setMessage('')
+    try {
+      await action()
+      setMessage(success)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không thực hiện được thao tác.')
+    }
+  }
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setNotice('Tạo tài khoản được triển khai ở mốc 29/10. Chưa tạo tài khoản.')
+    const form = event.currentTarget
+    const values = new FormData(form)
+    const email = String(values.get('email') || '').trim()
+    setPending(true)
+    setError('')
+    setMessage('')
+    try {
+      const user = await actions.createUser({
+        username: String(values.get('username') || '').trim(),
+        full_name: String(values.get('full_name') || '').trim(),
+        email: email || null,
+        role: String(values.get('role')) as Role,
+        password: String(values.get('password') || ''),
+      })
+      form.reset()
+      setMessage(`Đã tạo tài khoản ${user.username}.`)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không tạo được tài khoản.')
+    } finally {
+      setPending(false)
+    }
   }
   return (
     <>
@@ -27,7 +62,8 @@ export default function Users() {
         title="Người dùng"
         subtitle={`${data.users.length} tài khoản · Quản lý vai trò và quyền truy cập`}
       />
-      {notice && <Notice>{notice}</Notice>}
+      {message && <Notice>{message}</Notice>}
+      {error && <Notice error>{error}</Notice>}
       <div className={styles.columns}>
         <div className={styles.usersMain}>
           <Table
@@ -49,8 +85,11 @@ export default function Users() {
                     aria-label={`Vai trò của ${user.username}`}
                     value={user.role}
                     disabled={user.user_id === self}
-                    onChange={() =>
-                      setNotice('Thay đổi vai trò được triển khai ở mốc 29/10. Chưa lưu thay đổi.')
+                    onChange={(e) =>
+                      void run(
+                        () => actions.updateUser(user.user_id, { role: e.target.value as Role }),
+                        `Đã đổi vai trò của ${user.username}.`,
+                      )
                     }
                     className="mono small"
                   >
@@ -66,9 +105,15 @@ export default function Users() {
                 </td>
                 <td className="mono">{dateTime(user.last_login)}</td>
                 <td>
-                  <DeferredButton disabled={user.user_id === self}>
+                  <ActionButton
+                    disabled={user.user_id === self}
+                    action={() =>
+                      actions.updateUser(user.user_id, { is_active: !user.is_active })
+                    }
+                    success={user.is_active ? 'Đã khóa tài khoản.' : 'Đã mở khóa tài khoản.'}
+                  >
                     {user.user_id === self ? 'Bạn' : user.is_active ? 'Khóa' : 'Mở khóa'}
-                  </DeferredButton>
+                  </ActionButton>
                 </td>
               </tr>
             ))}
@@ -77,26 +122,33 @@ export default function Users() {
         <form className={styles.sideColumn} onSubmit={submit}>
           <Card title="Tạo tài khoản">
             <Field label="Tên đăng nhập" id="new-username">
-              <input id="new-username" autoComplete="off" required />
+              <input id="new-username" name="username" autoComplete="off" required />
             </Field>
             <Field label="Họ và tên" id="new-fullname">
-              <input id="new-fullname" autoComplete="off" required />
+              <input id="new-fullname" name="full_name" autoComplete="off" required />
             </Field>
             <Field label="Email (không bắt buộc)" id="new-email">
-              <input id="new-email" type="email" autoComplete="off" />
+              <input id="new-email" name="email" type="email" autoComplete="off" />
             </Field>
             <Field label="Vai trò" id="new-role">
-              <select id="new-role" defaultValue="VIEWER">
+              <select id="new-role" name="role" defaultValue="VIEWER">
                 <option value="VIEWER">VIEWER · chỉ xem</option>
                 <option value="OPERATOR">OPERATOR · xử lý cảnh báo, điều khiển</option>
                 <option value="ADMIN">ADMIN · toàn quyền</option>
               </select>
             </Field>
-            <Field label="Mật khẩu tạm" id="new-password">
-              <input id="new-password" type="password" autoComplete="new-password" required />
+            <Field label="Mật khẩu tạm" id="new-password" hint="ít nhất 8 ký tự">
+              <input
+                id="new-password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                required
+              />
             </Field>
-            <Button variant="primary" type="submit">
-              Tạo tài khoản
+            <Button variant="primary" type="submit" disabled={pending}>
+              {pending ? 'Đang tạo…' : 'Tạo tài khoản'}
             </Button>
           </Card>
         </form>

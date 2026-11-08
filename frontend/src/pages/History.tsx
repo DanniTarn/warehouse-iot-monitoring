@@ -4,15 +4,8 @@ import { useAuth } from '../store/auth'
 import { useDashboard } from '../store/dashboard'
 import { dateTime, number, TIME_ZONE } from '../services/format'
 import { MONITORING } from '../services/config'
-import {
-  Button,
-  DeferredButton,
-  EmptyRow,
-  Field,
-  Notice,
-  PageHeader,
-  Table,
-} from '../components/common/UI'
+import { toCsv } from '../services/csv'
+import { Button, EmptyRow, Field, Notice, PageHeader, Table } from '../components/common/UI'
 import { CommandTable } from '../components/common/CommandTable'
 import ui from '../components/common/UI.module.css'
 import styles from './Pages.module.css'
@@ -62,10 +55,66 @@ export default function History() {
     ['commands', 'Lệnh điều khiển'],
     ...(admin ? [['audit', 'Nhật ký thao tác']] : []),
   ]
+  function exportCsv() {
+    const name =
+      tab === 'telemetry'
+        ? 'du-lieu-cam-bien'
+        : tab === 'commands'
+          ? 'lenh-dieu-khien'
+          : 'nhat-ky-thao-tac'
+    const headers =
+      tab === 'telemetry'
+        ? [
+            'Thời gian',
+            'Thiết bị',
+            'Nhiệt độ (°C)',
+            'Độ ẩm (%)',
+            `Khói (${MONITORING.smoke.unit})`,
+            'Cửa',
+            'Chuyển động',
+          ]
+        : tab === 'commands'
+          ? ['Thời gian gửi', 'Thiết bị', 'Lệnh', 'Người gửi', 'Trạng thái', 'Phản hồi']
+          : ['Thời gian', 'Người dùng', 'Hành động', 'IP', 'Chi tiết']
+    const rows =
+      tab === 'telemetry'
+        ? telemetry.map((row) => [
+            dateTime(row.recorded_at, true),
+            row.device_code,
+            row.temperature,
+            row.humidity,
+            row.smoke_gas_level,
+            row.door_status === null ? '' : row.door_status ? 'Mở' : 'Đóng',
+            row.motion_detected === null ? '' : row.motion_detected ? 'Có' : 'Không',
+          ])
+        : tab === 'commands'
+          ? commands.map((row) => [
+              dateTime(row.sent_at, true),
+              row.device_code,
+              row.command_type,
+              row.username,
+              row.status,
+              dateTime(row.acknowledged_at, true),
+            ])
+          : audit.map((row) => [
+              dateTime(row.created_at, true),
+              row.username,
+              row.action,
+              row.ip_client,
+              row.details,
+            ])
+    const blob = new Blob([toCsv(headers, rows)], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${name}-${todayInVietnam()}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
   return (
     <>
       <PageHeader title="Lịch sử" subtitle="Dữ liệu cảm biến, lệnh điều khiển và nhật ký thao tác">
-        <DeferredButton>Xuất CSV</DeferredButton>
+        <Button onClick={exportCsv}>Xuất CSV</Button>
       </PageHeader>
       <nav className={ui.tabs} aria-label="Loại lịch sử">
         {tabs.map(([key, title]) => (
