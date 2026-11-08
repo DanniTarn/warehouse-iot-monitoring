@@ -1,15 +1,88 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../store/auth'
 import { useDashboard } from '../store/dashboard'
 import { api, type HistoryRows } from '../services/api'
 import { dateTime, number, TIME_ZONE } from '../services/format'
-import { MONITORING } from '../services/config'
+import { getDeviceKind, MONITORING } from '../services/config'
+import type { Telemetry } from '../services/types'
 import { toCsv } from '../services/csv'
 import { Button, EmptyRow, Field, Notice, PageHeader, Table } from '../components/common/UI'
 import { CommandTable } from '../components/common/CommandTable'
 import ui from '../components/common/UI.module.css'
 import styles from './Pages.module.css'
+type ReadingKey = 'temperature' | 'humidity' | 'smoke' | 'door' | 'motion'
+interface Reading {
+  header: string
+  numeric: boolean
+  cell: (row: Telemetry) => string
+  inline: (row: Telemetry) => string | null
+  highlight: (row: Telemetry) => '' | 'warning' | 'critical'
+}
+const READINGS: Record<ReadingKey, Reading> = {
+  temperature: {
+    header: 'Nhiệt độ (°C)',
+    numeric: true,
+    cell: (row) => number(row.temperature),
+    inline: (row) => (row.temperature === null ? null : `${number(row.temperature)} °C`),
+    highlight: () => '',
+  },
+  humidity: {
+    header: 'Độ ẩm (%)',
+    numeric: true,
+    cell: (row) => number(row.humidity),
+    inline: (row) => (row.humidity === null ? null : `${number(row.humidity)} %`),
+    highlight: (row) => ((row.humidity ?? 0) > MONITORING.humidityThreshold ? 'warning' : ''),
+  },
+  smoke: {
+    header: `Khói (${MONITORING.smoke.unit})`,
+    numeric: true,
+    cell: (row) => number(row.smoke_gas_level, 0),
+    inline: (row) =>
+      row.smoke_gas_level === null
+        ? null
+        : `${number(row.smoke_gas_level, 0)} ${MONITORING.smoke.unit}`,
+    highlight: () => '',
+  },
+  door: {
+    header: 'Cửa',
+    numeric: false,
+    cell: (row) => (row.door_status === null ? '—' : row.door_status ? 'Mở' : 'Đóng'),
+    inline: (row) => (row.door_status === null ? null : row.door_status ? 'Cửa mở' : 'Cửa đóng'),
+    highlight: (row) => (row.door_status ? 'critical' : ''),
+  },
+  motion: {
+    header: 'Chuyển động',
+    numeric: false,
+    cell: (row) => (row.motion_detected === null ? '—' : row.motion_detected ? 'Có' : 'Không'),
+    inline: (row) =>
+      row.motion_detected === null
+        ? null
+        : row.motion_detected
+          ? 'Có chuyển động'
+          : 'Không chuyển động',
+    highlight: () => '',
+  },
+}
+const ALL_READINGS = Object.keys(READINGS) as ReadingKey[]
+const KIND_READINGS: Record<ReturnType<typeof getDeviceKind>, ReadingKey[]> = {
+  environment: ['temperature', 'humidity', 'smoke'],
+  security: ['door', 'motion'],
+  unknown: ALL_READINGS,
+}
+function ReadingSummary({ row }: { row: Telemetry }) {
+  const present = ALL_READINGS.flatMap((key) => {
+    const text = READINGS[key].inline(row)
+    return text === null ? [] : [{ key, text }]
+  })
+  if (!present.length) return '—'
+  return present.map(({ key, text }, index) => (
+    <Fragment key={key}>
+      {index > 0 && ' · '}
+      <span className={READINGS[key].highlight(row)}>{text}</span>
+    </Fragment>
+  ))
+}
 function todayInVietnam() {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: TIME_ZONE,
@@ -80,6 +153,8 @@ export default function History() {
   const current = Math.min(page, Math.max(0, Math.ceil(total / 50) - 1))
   const slice = <T,>(items: T[]) => items.slice(current * 50, (current + 1) * 50)
   const cap = tab === 'telemetry' ? 5000 : 500
+  const selected = data.devices.find((item) => String(item.device_id) === device)
+  const columns = selected ? KIND_READINGS[getDeviceKind(selected)] : null
   const tabs = [
     ['telemetry', 'Dữ liệu cảm biến'],
     ['commands', 'Lệnh điều khiển'],
@@ -218,36 +293,34 @@ export default function History() {
           headers={[
             'Thời gian',
             'Thiết bị',
-            'Nhiệt độ (°C)',
-            'Độ ẩm (%)',
-            `Khói (${MONITORING.smoke.unit})`,
-            'Cửa',
-            'Chuyển động',
+            ...(columns ? columns.map((key) => READINGS[key].header) : ['Giá trị']),
           ]}
         >
           {slice(telemetry).map((r) => (
             <tr key={r.telemetry_id}>
               <td className="mono">{dateTime(r.recorded_at, true)}</td>
               <td className="mono">{r.device_code}</td>
-              <td className="mono" data-numeric>
-                {number(r.temperature)}
-              </td>
-              <td
-                className={`mono ${(r.humidity ?? 0) > MONITORING.humidityThreshold ? 'warning' : ''}`}
-                data-numeric
-              >
-                {number(r.humidity)}
-              </td>
-              <td className="mono" data-numeric>
-                {number(r.smoke_gas_level, 0)}
-              </td>
-              <td className={r.door_status ? 'critical' : ''}>
-                {r.door_status === null ? '—' : r.door_status ? 'Mở' : 'Đóng'}
-              </td>
-              <td>{r.motion_detected === null ? '—' : r.motion_detected ? 'Có' : 'Không'}</td>
+              {columns ? (
+                columns.map((key) => {
+                  const reading = READINGS[key]
+                  return (
+                    <td
+                      key={key}
+                      className={`${reading.numeric ? 'mono' : ''} ${reading.highlight(r)}`}
+                      data-numeric={reading.numeric || undefined}
+                    >
+                      {reading.cell(r)}
+                    </td>
+                  )
+                })
+              ) : (
+                <td className="mono">
+                  <ReadingSummary row={r} />
+                </td>
+              )}
             </tr>
           ))}
-          {!telemetry.length && <EmptyRow columns={7} />}
+          {!telemetry.length && <EmptyRow columns={2 + (columns?.length ?? 1)} />}
         </Table>
       )}
       {tab === 'commands' && <CommandTable commands={slice(commands)} />}
