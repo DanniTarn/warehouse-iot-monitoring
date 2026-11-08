@@ -5,6 +5,7 @@ import type { RealtimeEvent, RealtimeState } from '../services/realtime'
 import type { Device, DeviceCommand, DeviceConfig, User } from '../services/types'
 
 const TELEMETRY_LIMIT = 1500
+const COMMAND_LIMIT = 200
 const initialConnection: RealtimeState = dataSource === 'api' ? 'reconnecting' : 'live'
 
 export type DashboardChange =
@@ -138,7 +139,7 @@ export const useDashboard = create<DashboardState>((set) => ({
             ? data.commands.map((item) =>
                 item.command_id === command.command_id ? command : item,
               )
-            : [command, ...data.commands]
+            : [command, ...data.commands].slice(0, COMMAND_LIMIT)
           const fanMode = fanModeOf(command)
           const configs = fanMode
             ? data.configs.map((config) =>
