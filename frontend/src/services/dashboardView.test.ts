@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { derivePresentation, type PresentationInput } from './dashboardView'
+import {
+  buzzerSounding,
+  derivePresentation,
+  fanState,
+  type PresentationInput,
+} from './dashboardView'
 import type { Alert, Device, DeviceCommand, DeviceConfig, Telemetry } from './types'
 
 const at = (minute: number) => `2026-11-08T10:${String(minute).padStart(2, '0')}:00+07:00`
@@ -297,5 +302,30 @@ describe('derivePresentation security events', () => {
     expect(events).toHaveLength(5)
     expect(events[0].recorded_at).toBe(at(55))
     expect(events.at(-1)?.recorded_at).toBe(at(20))
+  })
+})
+
+describe('per-device fan and buzzer state', () => {
+  it('reads the fan mode of the requested environment device, not the first one', () => {
+    const data = input({
+      devices: [device(1, 'NODE1_ENV'), device(2, 'NODE2_SEC'), device(3, 'NODE3_ENV')],
+      configs: [config(1), config(2), config(3, { fan_mode: 'OFF' })],
+    })
+    expect(fanState(data, 3).mode).toBe('off')
+    expect(derivePresentation(data).fan_mode).toBe('auto')
+  })
+
+  it('reads the buzzer of the requested security device', () => {
+    const commands = [
+      command({
+        command_id: 1,
+        device_id: 4,
+        command_type: 'BUZZER_ON',
+        status: 'ACKNOWLEDGED',
+        sent_at: at(5),
+      }),
+    ]
+    expect(buzzerSounding(commands, 4)).toBe(true)
+    expect(buzzerSounding(commands, 2)).toBe(false)
   })
 })

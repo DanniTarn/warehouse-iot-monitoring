@@ -213,6 +213,57 @@ describe('real actions against the store', () => {
     expect(await screen.findByText('Đã thu hồi thiết bị.')).toBeVisible()
     expect(screen.queryByLabelText('Token xác thực')).not.toBeInTheDocument()
   })
+  it('keeps Save disabled when only the fan mode changed', async () => {
+    const user = userEvent.setup()
+    await open('/devices/1')
+    const forceOn = await screen.findByRole('button', { name: 'Bật cưỡng chế' })
+    const target =
+      forceOn.getAttribute('aria-pressed') === 'true'
+        ? screen.getByRole('button', { name: 'Tắt cưỡng chế' })
+        : forceOn
+    await user.click(target)
+    await waitFor(() => expect(target).toHaveAttribute('aria-pressed', 'true'))
+    expect(screen.getByRole('button', { name: 'Lưu cấu hình' })).toBeDisabled()
+  })
+
+  it('does not offer decommissioning before a device is activated', async () => {
+    await open('/devices/3')
+    expect(await screen.findByRole('button', { name: 'Thu hồi thiết bị' })).toBeDisabled()
+  })
+
+  it('does not carry an acknowledgement over to the next critical alert', async () => {
+    const user = userEvent.setup()
+    await open('/')
+    await screen.findByRole('heading', { name: 'Tổng quan', level: 1 })
+    await waitFor(() => expect(useDashboard.getState().loading).toBe(false))
+    const base = useDashboard.getState().data!.alerts[0]
+    const critical = (alert_id: number, alert_message: string) => ({
+      ...base,
+      alert_id,
+      alert_message,
+      severity: 'CRITICAL' as const,
+      is_acknowledged: false,
+      created_at: new Date().toISOString(),
+    })
+    const current = critical(98, 'Cảnh báo cũ hơn')
+    act(() => {
+      useDashboard.getState().applyEvent({ type: 'alert_created', data: current })
+      useDashboard
+        .getState()
+        .applyEvent({ type: 'alert_created', data: critical(99, 'Cảnh báo mới nhất') })
+    })
+    vi.spyOn(api, 'acknowledgeAlert').mockImplementation(async (_token, alertId) => ({
+      ...useDashboard.getState().data!.alerts.find((item) => item.alert_id === alertId)!,
+      is_acknowledged: true,
+    }))
+    const banner = () =>
+      screen.getAllByRole('alert').find((node) => node.textContent?.includes('CRITICAL ·'))!
+    await waitFor(() => expect(banner()).toHaveTextContent('Cảnh báo mới nhất'))
+    await user.click(within(banner()).getByRole('button', { name: 'Xác nhận đã xử lý' }))
+    await waitFor(() => expect(banner()).toHaveTextContent(current.alert_message))
+    expect(banner()).not.toHaveTextContent('Đã xác nhận cảnh báo.')
+  })
+
   it('hides alert action buttons from a viewer', async () => {
     await open('/alerts', 'viewer01')
     expect((await screen.findAllByText('Chưa xử lý')).length).toBeGreaterThan(0)

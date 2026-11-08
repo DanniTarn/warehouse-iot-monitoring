@@ -64,6 +64,29 @@ function fanMode(config: DeviceConfig | undefined): Presentation['fan_mode'] {
   return 'auto'
 }
 
+type FanInput = Pick<DashboardData, 'configs' | 'telemetry' | 'commands'>
+
+export function fanState({ configs, telemetry, commands }: FanInput, deviceId: number | undefined) {
+  const config = configs.find((item) => item.device_id === deviceId)
+  const latest = latestAcknowledged(commands, deviceId, ['FAN_ON', 'FAN_OFF', 'FAN_AUTO'])
+  const humidity = newestTelemetry(telemetry, deviceId)?.humidity ?? null
+  return {
+    mode: fanMode(config),
+    running: fanRunning(
+      latest,
+      humidity,
+      config?.humidity_threshold ?? MONITORING.humidityThreshold,
+    ),
+  }
+}
+
+export function buzzerSounding(commands: DeviceCommand[], deviceId: number | undefined) {
+  return (
+    latestAcknowledged(commands, deviceId, ['BUZZER_ON', 'BUZZER_OFF'])?.command_type ===
+    'BUZZER_ON'
+  )
+}
+
 export function derivePresentation({
   devices,
   configs,
@@ -73,18 +96,7 @@ export function derivePresentation({
 }: PresentationInput): Presentation {
   const envDevice = devices.find((device) => device.device_code.endsWith('_ENV'))
   const secDevice = devices.find((device) => device.device_code.endsWith('_SEC'))
-  const envConfig = configs.find((config) => config.device_id === envDevice?.device_id)
-  const humidityThreshold = envConfig?.humidity_threshold ?? MONITORING.humidityThreshold
-  const latestFan = latestAcknowledged(commands, envDevice?.device_id, [
-    'FAN_ON',
-    'FAN_OFF',
-    'FAN_AUTO',
-  ])
-  const humidity = newestTelemetry(telemetry, envDevice?.device_id)?.humidity ?? null
-  const latestBuzzer = latestAcknowledged(commands, secDevice?.device_id, [
-    'BUZZER_ON',
-    'BUZZER_OFF',
-  ])
+  const fan = fanState({ configs, telemetry, commands }, envDevice?.device_id)
   const securityEvents = (
     secDevice
       ? telemetry.filter(
@@ -118,9 +130,9 @@ export function derivePresentation({
     })
     .slice(0, 5)
   return {
-    fan_mode: fanMode(envConfig),
-    fan_running: fanRunning(latestFan, humidity, humidityThreshold),
-    buzzer_sounding: latestBuzzer?.command_type === 'BUZZER_ON',
+    fan_mode: fan.mode,
+    fan_running: fan.running,
+    buzzer_sounding: buzzerSounding(commands, secDevice?.device_id),
     led: alerts.some((alert) => alert.severity === 'CRITICAL' && !alert.is_acknowledged)
       ? 'Đỏ nhấp nháy'
       : 'Tắt',

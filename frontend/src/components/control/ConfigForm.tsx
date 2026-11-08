@@ -17,7 +17,6 @@ export function ConfigForm({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-  const dirty = JSON.stringify(form) !== JSON.stringify(config)
   function changes(): ConfigPatch {
     const patch: ConfigPatch = {}
     if (form.temperature_threshold !== config.temperature_threshold)
@@ -32,6 +31,7 @@ export function ConfigForm({
       patch.night_mode_enabled = form.night_mode_enabled
     return patch
   }
+  const dirty = Object.keys(changes()).length > 0
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!dirty || pending) return
@@ -76,6 +76,7 @@ export function ConfigForm({
                   type="number"
                   id="smoke"
                   min="0"
+                  max="100000"
                   step="any"
                   value={form.smoke_gas_threshold ?? ''}
                   onChange={(e) =>
@@ -95,6 +96,8 @@ export function ConfigForm({
               type="number"
               id="interval"
               min="1"
+              max="3600"
+              step="1"
               value={form.telemetry_interval || ''}
               onChange={(e) => setForm({ ...form, telemetry_interval: Number(e.target.value) })}
               disabled={viewer}
