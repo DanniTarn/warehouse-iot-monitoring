@@ -371,3 +371,62 @@ describe('dashboard applyEvent guards', () => {
     expect(useDashboard.getState().data).toBe(before)
   })
 })
+
+describe('dashboard applyEvent terminal command states', () => {
+  it('does not let a late failure overwrite an acknowledgement', () => {
+    load()
+    useDashboard.getState().applyEvent({
+      type: 'command_status',
+      data: command(1, {
+        device_id: 2,
+        command_type: 'BUZZER_OFF',
+        status: 'ACKNOWLEDGED',
+        acknowledged_at: at(11),
+      }),
+    })
+    useDashboard.getState().applyEvent({
+      type: 'command_status',
+      data: command(1, { device_id: 2, status: 'FAILED', acknowledged_at: null }),
+    })
+    expect(useDashboard.getState().data!.commands[0].status).toBe('ACKNOWLEDGED')
+  })
+
+  it('does not let an acknowledgement overwrite a failure', () => {
+    load()
+    useDashboard.getState().applyEvent({
+      type: 'command_status',
+      data: command(1, { device_id: 2, status: 'FAILED' }),
+    })
+    useDashboard.getState().applyEvent({
+      type: 'command_status',
+      data: command(1, { device_id: 2, status: 'ACKNOWLEDGED', acknowledged_at: at(12) }),
+    })
+    expect(useDashboard.getState().data!.commands[0].status).toBe('FAILED')
+  })
+})
+
+describe('dashboard applyEvent fan mode ordering', () => {
+  it('keeps the newer mode when an older acknowledged command is replayed', () => {
+    load()
+    useDashboard.getState().applyEvent({
+      type: 'command_status',
+      data: command(2, {
+        device_id: 1,
+        command_type: 'FAN_AUTO',
+        status: 'ACKNOWLEDGED',
+        sent_at: at(20),
+      }),
+    })
+    useDashboard.getState().applyEvent({
+      type: 'command_status',
+      data: command(1, {
+        device_id: 1,
+        command_type: 'FAN_ON',
+        status: 'ACKNOWLEDGED',
+        sent_at: at(10),
+      }),
+    })
+    const config = useDashboard.getState().data!.configs.find((item) => item.device_id === 1)
+    expect(config!.fan_mode).toBe('AUTO')
+  })
+})
