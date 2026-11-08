@@ -1,13 +1,48 @@
 import { useState } from 'react'
 import { useAuth } from '../../store/auth'
 import { useDashboard } from '../../store/dashboard'
+import { useActions } from '../../store/actions'
+import { MONITORING } from '../../services/config'
+import type { ManualCommandType } from '../../services/types'
 import { Badge, Notice } from '../common/UI'
 import styles from '../common/UI.module.css'
-export function FanControl({ detailed = false }: { detailed?: boolean }) {
+export function FanControl({
+  detailed = false,
+  deviceId,
+}: {
+  detailed?: boolean
+  deviceId?: number
+}) {
   const viewer = useAuth((s) => s.user?.role === 'VIEWER')
-  const mode = useDashboard((s) => s.data?.presentation.fan_mode)
-  const running = useDashboard((s) => s.data?.presentation.fan_running)
-  const [notice, setNotice] = useState(false)
+  const data = useDashboard((s) => s.data)
+  const actions = useActions()
+  const [pending, setPending] = useState<ManualCommandType | ''>('')
+  const [error, setError] = useState('')
+  const target =
+    deviceId ??
+    data?.devices.find((device) => device.device_code === MONITORING.environmentCode)?.device_id
+  const mode = data?.presentation.fan_mode
+  const running = data?.presentation.fan_running
+  const options: [ManualCommandType, 'auto' | 'on' | 'off', string][] = [
+    ['FAN_AUTO', 'auto', 'Tự động'],
+    ['FAN_ON', 'on', detailed ? 'Bật cưỡng chế' : 'Bật'],
+    ['FAN_OFF', 'off', detailed ? 'Tắt cưỡng chế' : 'Tắt'],
+  ]
+  async function send(command: ManualCommandType) {
+    if (target === undefined) {
+      setError('Không tìm thấy thiết bị môi trường.')
+      return
+    }
+    setPending(command)
+    setError('')
+    try {
+      await actions.sendCommand(target, command)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không gửi được lệnh điều khiển.')
+    } finally {
+      setPending('')
+    }
+  }
   return (
     <div className="stack">
       <div className="row between">
@@ -15,23 +50,21 @@ export function FanControl({ detailed = false }: { detailed?: boolean }) {
         <Badge tone={running ? 'good' : 'neutral'}>{running ? 'Đang chạy' : 'Đang tắt'}</Badge>
       </div>
       <div className={styles.segmented} role="group" aria-label="Chế độ quạt">
-        {[
-          ['auto', 'Tự động'],
-          ['on', detailed ? 'Bật cưỡng chế' : 'Bật'],
-          ['off', detailed ? 'Tắt cưỡng chế' : 'Tắt'],
-        ].map(([key, label]) => (
+        {options.map(([command, key, label]) => (
           <button
-            key={key}
+            key={command}
             aria-pressed={mode === key}
-            disabled={viewer}
-            onClick={() => setNotice(true)}
+            aria-busy={pending === command}
+            disabled={viewer || pending !== ''}
+            onClick={() => void send(command)}
           >
             {label}
           </button>
         ))}
       </div>
       <p className="small secondary">Quy tắc: độ ẩm &gt; 65 % thì bật quạt.</p>
-      {notice && <Notice>Điều khiển thiết bị được triển khai ở mốc 24/10. Chưa gửi lệnh.</Notice>}
+      {error && <Notice error>{error}</Notice>}
+      {pending && <Notice>Đang gửi lệnh {pending}…</Notice>}
       {viewer && (
         <p className="small secondary">
           Tài khoản Viewer chỉ có quyền xem. Không thể điều khiển thiết bị.
