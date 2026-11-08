@@ -1,20 +1,27 @@
 import { useState, type FormEvent } from 'react'
-import { useAuth } from '../store/auth'
-import { useDashboard } from '../store/dashboard'
-import { useActions } from '../store/actions'
-import { dateTime } from '../services/format'
-import type { Role } from '../services/types'
+import { UserPlus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  ActionButton,
-  Badge,
-  Button,
-  Card,
-  Field,
-  Notice,
-  PageHeader,
   Table,
-} from '../components/common/UI'
-import styles from './Pages.module.css'
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { PageHeader } from '@/components/app/page-header'
+import { ActionButton, Field, Notice, ToneBadge } from '@/components/app/kit'
+import { dateTime } from '@/services/format'
+import type { Role } from '@/services/types'
+import { useActions } from '@/store/actions'
+import { useAuth } from '@/store/auth'
+import { useDashboard } from '@/store/dashboard'
+
+const selectClass =
+  'h-8 rounded-md border border-input bg-transparent px-2 font-mono text-xs shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50'
+
 export default function Users() {
   const data = useDashboard((s) => s.data)!
   const self = useAuth((s) => s.user?.user_id)
@@ -57,102 +64,122 @@ export default function Users() {
     }
   }
   return (
-    <>
+    <div className="space-y-4">
       <PageHeader
         title="Người dùng"
         subtitle={`${data.users.length} tài khoản · Quản lý vai trò và quyền truy cập`}
       />
       {message && <Notice>{message}</Notice>}
       {error && <Notice error>{error}</Notice>}
-      <div className={styles.columns}>
-        <div className={styles.usersMain}>
-          <Table
-            label="Danh sách người dùng"
-            headers={['Tài khoản', 'Vai trò', 'Trạng thái', 'Đăng nhập gần nhất', 'Thao tác']}
-          >
-            {data.users.map((user) => (
-              <tr key={user.user_id}>
-                <td>
-                  <div className={styles.deviceName}>
-                    <strong>{user.full_name}</strong>
-                    <span className="mono small muted">
-                      {user.username} · {user.email || '—'}
-                    </span>
-                  </div>
-                </td>
-                <td>
-                  <select
-                    aria-label={`Vai trò của ${user.username}`}
-                    value={user.role}
-                    disabled={user.user_id === self}
-                    onChange={(e) =>
-                      void run(
-                        () => actions.updateUser(user.user_id, { role: e.target.value as Role }),
-                        `Đã đổi vai trò của ${user.username}.`,
-                      )
-                    }
-                    className="mono small"
-                  >
-                    {['ADMIN', 'OPERATOR', 'VIEWER'].map((role) => (
-                      <option key={role}>{role}</option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  <Badge tone={user.is_active ? 'good' : 'neutral'}>
-                    {user.is_active ? 'Hoạt động' : 'Đã khóa'}
-                  </Badge>
-                </td>
-                <td className="mono">{dateTime(user.last_login)}</td>
-                <td>
-                  <ActionButton
-                    disabled={user.user_id === self}
-                    action={() =>
-                      actions.updateUser(user.user_id, { is_active: !user.is_active })
-                    }
-                    success={user.is_active ? 'Đã khóa tài khoản.' : 'Đã mở khóa tài khoản.'}
-                  >
-                    {user.user_id === self ? 'Bạn' : user.is_active ? 'Khóa' : 'Mở khóa'}
-                  </ActionButton>
-                </td>
-              </tr>
-            ))}
+
+      <div className="grid items-start gap-4 xl:grid-cols-[1fr_320px]">
+        <div className="overflow-x-auto rounded-xl border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tài khoản</TableHead>
+                <TableHead>Vai trò</TableHead>
+                <TableHead>Trạng thái</TableHead>
+                <TableHead>Đăng nhập gần nhất</TableHead>
+                <TableHead className="text-right">Thao tác</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.users.map((user) => (
+                <TableRow key={user.user_id}>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{user.full_name}</span>
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {user.username} · {user.email || '—'}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <select
+                      aria-label={`Vai trò của ${user.username}`}
+                      value={user.role}
+                      disabled={user.user_id === self}
+                      onChange={(e) =>
+                        void run(
+                          () => actions.updateUser(user.user_id, { role: e.target.value as Role }),
+                          `Đã đổi vai trò của ${user.username}.`,
+                        )
+                      }
+                      className={selectClass}
+                    >
+                      {['ADMIN', 'OPERATOR', 'VIEWER'].map((role) => (
+                        <option key={role}>{role}</option>
+                      ))}
+                    </select>
+                  </TableCell>
+                  <TableCell>
+                    <ToneBadge tone={user.is_active ? 'good' : 'muted'}>
+                      {user.is_active ? 'Hoạt động' : 'Đã khóa'}
+                    </ToneBadge>
+                  </TableCell>
+                  <TableCell className="font-mono text-xs">{dateTime(user.last_login)}</TableCell>
+                  <TableCell className="text-right">
+                    <ActionButton
+                      size="sm"
+                      variant="outline"
+                      disabled={user.user_id === self}
+                      action={() =>
+                        actions.updateUser(user.user_id, { is_active: !user.is_active })
+                      }
+                      success={user.is_active ? 'Đã khóa tài khoản.' : 'Đã mở khóa tài khoản.'}
+                    >
+                      {user.user_id === self ? 'Bạn' : user.is_active ? 'Khóa' : 'Mở khóa'}
+                    </ActionButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
           </Table>
         </div>
-        <form className={styles.sideColumn} onSubmit={submit}>
-          <Card title="Tạo tài khoản">
-            <Field label="Tên đăng nhập" id="new-username">
-              <input id="new-username" name="username" autoComplete="off" required />
-            </Field>
-            <Field label="Họ và tên" id="new-fullname">
-              <input id="new-fullname" name="full_name" autoComplete="off" required />
-            </Field>
-            <Field label="Email (không bắt buộc)" id="new-email">
-              <input id="new-email" name="email" type="email" autoComplete="off" />
-            </Field>
-            <Field label="Vai trò" id="new-role">
-              <select id="new-role" name="role" defaultValue="VIEWER">
-                <option value="VIEWER">VIEWER · chỉ xem</option>
-                <option value="OPERATOR">OPERATOR · xử lý cảnh báo, điều khiển</option>
-                <option value="ADMIN">ADMIN · toàn quyền</option>
-              </select>
-            </Field>
-            <Field label="Mật khẩu tạm" id="new-password" hint="ít nhất 8 ký tự">
-              <input
-                id="new-password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                minLength={8}
-                required
-              />
-            </Field>
-            <Button variant="primary" type="submit" disabled={pending}>
-              {pending ? 'Đang tạo…' : 'Tạo tài khoản'}
-            </Button>
+
+        <form onSubmit={submit}>
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <UserPlus className="size-4 text-muted-foreground" />
+                Tạo tài khoản
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Field label="Tên đăng nhập" id="new-username">
+                <Input id="new-username" name="username" autoComplete="off" required />
+              </Field>
+              <Field label="Họ và tên" id="new-fullname">
+                <Input id="new-fullname" name="full_name" autoComplete="off" required />
+              </Field>
+              <Field label="Email (không bắt buộc)" id="new-email">
+                <Input id="new-email" name="email" type="email" autoComplete="off" />
+              </Field>
+              <Field label="Vai trò" id="new-role">
+                <select id="new-role" name="role" defaultValue="VIEWER" className={selectClass}>
+                  <option value="VIEWER">VIEWER · chỉ xem</option>
+                  <option value="OPERATOR">OPERATOR · xử lý cảnh báo, điều khiển</option>
+                  <option value="ADMIN">ADMIN · toàn quyền</option>
+                </select>
+              </Field>
+              <Field label="Mật khẩu tạm" id="new-password" hint="ít nhất 8 ký tự">
+                <Input
+                  id="new-password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+              </Field>
+              <Button type="submit" className="w-full" disabled={pending}>
+                {pending ? 'Đang tạo…' : 'Tạo tài khoản'}
+              </Button>
+            </CardContent>
           </Card>
         </form>
       </div>
-    </>
+    </div>
   )
 }

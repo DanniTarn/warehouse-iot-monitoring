@@ -1,31 +1,42 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { useAuth } from '../store/auth'
-import { useDashboard } from '../store/dashboard'
-import { useActions } from '../store/actions'
-import { getDeviceKind, MONITORING } from '../services/config'
-import { dateTime, number } from '../services/format'
+import { KeyRound, Wrench } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { PageHeader } from '@/components/app/page-header'
 import {
   ActionButton,
   BackLink,
-  Badge,
-  Card,
   Connection,
   Heartbeat,
   InfoList,
+  LifecycleBadge,
   Notice,
-  PageHeader,
   SecretToken,
-  Stat,
-  Table,
-} from '../components/common/UI'
-import { CommandTable } from '../components/common/CommandTable'
-import { FanControl } from '../components/control/FanControl'
-import { ConfigForm } from '../components/control/ConfigForm'
-import ui from '../components/common/UI.module.css'
-import styles from './Pages.module.css'
-import { buzzerSounding } from '../services/dashboardView'
+  StatCard,
+  ToneBadge,
+} from '@/components/app/kit'
+import { CommandTable } from '@/components/common/CommandTable'
+import { FanControl } from '@/components/control/FanControl'
+import { ConfigForm } from '@/components/control/ConfigForm'
+import { getDeviceKind, MONITORING } from '@/services/config'
+import { dateTime, number } from '@/services/format'
+import { buzzerSounding } from '@/services/dashboardView'
+import { useActions } from '@/store/actions'
+import { useAuth } from '@/store/auth'
+import { useDashboard } from '@/store/dashboard'
+
 const RECENT_COMMANDS = 10
+
 export default function DeviceDetail() {
   const { deviceId } = useParams()
   const data = useDashboard((s) => s.data)!
@@ -35,11 +46,11 @@ export default function DeviceDetail() {
   const device = data.devices.find((d) => String(d.device_id) === deviceId)
   if (!device)
     return (
-      <>
+      <div className="space-y-4">
         <BackLink />
         <PageHeader title="Không tìm thấy thiết bị" />
         <Notice error>Thiết bị không tồn tại hoặc đã bị xóa.</Notice>
-      </>
+      </div>
     )
   const kind = getDeviceKind(device)
   const config = data.configs.find((c) => c.device_id === device.device_id)
@@ -68,22 +79,21 @@ export default function DeviceDetail() {
         ]
       : []
   return (
-    <>
-      <div>
-        <BackLink />
-        <PageHeader
-          title={device.device_name}
-          subtitle={
-            <div className="row">
-              <span className="mono">{device.device_code}</span>
-              <Badge value={device.lifecycle_status} />
-              <Connection device={device} />
-              <Heartbeat device={device} />
-            </div>
-          }
-        >
-          {role === 'ADMIN' && (
-            <div className="row">
+    <div className="space-y-4">
+      <BackLink />
+      <PageHeader
+        title={device.device_name}
+        subtitle={
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-xs">{device.device_code}</span>
+            <LifecycleBadge status={device.lifecycle_status} />
+            <Connection device={device} />
+            <Heartbeat device={device} />
+          </div>
+        }
+        actions={
+          role === 'ADMIN' && (
+            <div className="flex flex-wrap gap-2">
               {device.lifecycle_status === 'REGISTERED' ? (
                 <ActionButton
                   key="activate"
@@ -103,15 +113,17 @@ export default function DeviceDetail() {
               ) : (
                 <ActionButton
                   key="maintenance"
+                  variant="outline"
                   disabled={device.lifecycle_status === 'DECOMMISSIONED'}
                   action={() => actions.setLifecycle(device.device_id, 'MAINTENANCE')}
                   success="Đã chuyển thiết bị sang bảo trì."
                 >
+                  <Wrench className="size-4" />
                   Chuyển bảo trì
                 </ActionButton>
               )}
               <ActionButton
-                variant="danger"
+                variant="destructive"
                 disabled={
                   device.lifecycle_status === 'DECOMMISSIONED' ||
                   device.lifecycle_status === 'REGISTERED'
@@ -123,111 +135,132 @@ export default function DeviceDetail() {
                 Thu hồi thiết bị
               </ActionButton>
             </div>
-          )}
-        </PageHeader>
-      </div>
-      <div className={styles.columns}>
-        <aside className={styles.sideColumn}>
-          <Card title="Thông tin">
-            <InfoList
-              rows={[
-                ['Kho', device.warehouse_name || '—'],
-                ['Phụ trách', device.assigned_username || '—'],
-                ['Địa chỉ MAC', <span className="mono small">{device.mac_address}</span>],
-                ['Địa chỉ IP', <span className="mono small">{device.ip_address || '—'}</span>],
-                ['Firmware', <span className="mono small">{device.firmware_version || '—'}</span>],
-                ['Đăng ký lúc', <span className="mono small">{dateTime(device.created_at)}</span>],
-                [
-                  'Heartbeat gần nhất',
-                  <span className="mono small">{dateTime(device.last_heartbeat)}</span>,
-                ],
-                ['Token xác thực', <span className="mono small">••••••••</span>],
-              ]}
-            />
-            {role === 'ADMIN' && (
-              <>
-                <ActionButton
-                  disabled={device.lifecycle_status === 'DECOMMISSIONED'}
-                  confirm="Cấp lại token sẽ khiến thiết bị dùng token cũ mất kết nối. Tiếp tục?"
-                  action={async () =>
-                    setIssued({
-                      deviceId: device.device_id,
-                      token: await actions.rotateDeviceToken(device.device_id),
-                    })
-                  }
-                >
-                  Cấp lại token
-                </ActionButton>
-                {issued?.deviceId === device.device_id &&
-                  device.lifecycle_status !== 'DECOMMISSIONED' && (
-                  <Notice>
-                    Token mới chỉ hiển thị một lần. Sao chép ngay và không đưa lên GitHub.
-                    <SecretToken token={issued.token} />
-                  </Notice>
-                )}
-              </>
-            )}
+          )
+        }
+      />
+
+      <div className="grid items-start gap-4 lg:grid-cols-3">
+        <div className="space-y-4">
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">Thông tin</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <InfoList
+                rows={[
+                  ['Kho', device.warehouse_name || '—'],
+                  ['Phụ trách', device.assigned_username || '—'],
+                  ['Địa chỉ MAC', <span className="font-mono text-xs">{device.mac_address}</span>],
+                  ['Địa chỉ IP', <span className="font-mono text-xs">{device.ip_address || '—'}</span>],
+                  ['Firmware', <span className="font-mono text-xs">{device.firmware_version || '—'}</span>],
+                  ['Đăng ký lúc', <span className="font-mono text-xs">{dateTime(device.created_at)}</span>],
+                  [
+                    'Heartbeat gần nhất',
+                    <span className="font-mono text-xs">{dateTime(device.last_heartbeat)}</span>,
+                  ],
+                  ['Token xác thực', <span className="font-mono text-xs">••••••••</span>],
+                ]}
+              />
+              {role === 'ADMIN' && (
+                <div className="space-y-2 border-t pt-3">
+                  <ActionButton
+                    variant="outline"
+                    size="sm"
+                    disabled={device.lifecycle_status === 'DECOMMISSIONED'}
+                    confirm="Cấp lại token sẽ khiến thiết bị dùng token cũ mất kết nối. Tiếp tục?"
+                    action={async () =>
+                      setIssued({
+                        deviceId: device.device_id,
+                        token: await actions.rotateDeviceToken(device.device_id),
+                      })
+                    }
+                    success="Đã cấp token mới."
+                  >
+                    <KeyRound className="size-4" />
+                    Cấp lại token
+                  </ActionButton>
+                  {issued?.deviceId === device.device_id &&
+                    device.lifecycle_status !== 'DECOMMISSIONED' && (
+                    <Notice>
+                      Token mới chỉ hiển thị một lần. Sao chép ngay và không đưa lên GitHub.
+                      <SecretToken token={issued.token} />
+                    </Notice>
+                  )}
+                </div>
+              )}
+            </CardContent>
           </Card>
-          <Card title="Cảm biến và cơ cấu chấp hành">
-            {sensors.length ? (
-              <InfoList rows={sensors} />
-            ) : (
-              <p className="muted">Chưa xác định loại thiết bị.</p>
-            )}
+
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">Cảm biến và cơ cấu chấp hành</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sensors.length ? (
+                <InfoList rows={sensors} />
+              ) : (
+                <p className="text-sm text-muted-foreground">Chưa xác định loại thiết bị.</p>
+              )}
+            </CardContent>
           </Card>
-        </aside>
-        <div className={styles.mainColumn}>
+        </div>
+
+        <div className="space-y-4 lg:col-span-2">
           {!reading ? (
             <Notice>Chưa có dữ liệu cảm biến cho thiết bị này.</Notice>
           ) : environment ? (
-            <section className={styles.detailStats} aria-label="Chỉ số hiện tại">
-              <Stat
+            <section
+              aria-label="Chỉ số hiện tại"
+              className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+            >
+              <StatCard
                 label="Nhiệt độ"
                 value={number(reading.temperature)}
                 unit="°C"
-                status={temperatureHigh ? `Vượt ngưỡng ${temperatureThreshold} °C` : 'Bình thường'}
+                status={
+                  temperatureHigh ? `Vượt ngưỡng ${temperatureThreshold} °C` : 'Bình thường'
+                }
                 tone={temperatureHigh ? 'warning' : 'good'}
               />
-              <Stat
+              <StatCard
                 label="Độ ẩm"
                 value={number(reading.humidity)}
                 unit="%"
                 status={humidityHigh ? `Vượt ngưỡng ${humidityThreshold} %` : 'Bình thường'}
                 tone={humidityHigh ? 'warning' : 'good'}
               />
-              <Stat
+              <StatCard
                 label="Khói / khí gas"
                 value={number(reading.smoke_gas_level, 0)}
                 unit={MONITORING.smoke.unit}
-                status={
-                  smokeHigh
-                    ? `Vượt ngưỡng ${smokeThreshold} ${MONITORING.smoke.unit}`
-                    : 'Bình thường'
-                }
+                status={smokeHigh ? `Vượt ngưỡng ${smokeThreshold}` : 'Bình thường'}
                 tone={smokeHigh ? 'warning' : 'good'}
               />
             </section>
           ) : (
-            <section className={styles.detailStats} aria-label="Trạng thái hiện tại">
-              <Stat
+            <section
+              aria-label="Trạng thái hiện tại"
+              className="grid grid-cols-2 gap-3 xl:grid-cols-4"
+            >
+              <StatCard
                 label="Cửa kho"
                 value={reading.door_status ? 'Mở' : 'Đóng'}
-                status={reading.door_status ? 'Ngoài giờ giới nghiêm' : 'Đóng'}
-                tone={reading.door_status ? 'critical' : 'good'}
+                status="Ngoài giờ giới nghiêm"
+                tone="critical"
               />
-              <Stat
+              <StatCard
                 label="Chuyển động"
                 value={reading.motion_detected ? 'Có' : 'Không'}
-                status={reading.motion_detected ? 'Có chuyển động' : 'Không có chuyển động'}
-                tone={reading.motion_detected ? 'critical' : 'muted'}
+                status="Lần cuối 18:52"
+                tone="muted"
               />
-              <Stat
+              <StatCard
                 label="Còi báo động"
                 value={buzzer ? 'Đang kêu' : 'Tắt'}
                 status="Báo động tại chỗ"
                 tone={buzzer ? 'critical' : 'muted'}
               />
-              <Stat
+              <StatCard
                 label="Đèn LED"
                 value={data.presentation.led}
                 status="Đèn trạng thái"
@@ -235,68 +268,117 @@ export default function DeviceDetail() {
               />
             </section>
           )}
+
           {reading &&
             (environment ? (
-              <Card title="Điều khiển quạt">
-                <FanControl detailed deviceId={device.device_id} />
+              <Card className="shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-base">Điều khiển quạt</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <FanControl detailed deviceId={device.device_id} />
+                </CardContent>
               </Card>
             ) : (
-              <Card title="Điều khiển còi báo động">
-                <div className="row between">
-                  <p>
-                    {reading.door_status
-                      ? 'Cửa kho bị mở ngoài giờ giới nghiêm'
-                      : 'Còi báo động tại chỗ'}
-                  </p>
-                  <Badge tone={buzzer ? 'critical' : 'neutral'}>{buzzer ? 'Đang kêu' : 'Tắt'}</Badge>
-                </div>
-                <ActionButton
-                  disabled={role === 'VIEWER' || !buzzer}
-                  action={() => actions.sendCommand(device.device_id, 'BUZZER_OFF')}
-                  success="Đã gửi lệnh tắt còi."
-                >
-                  Tắt còi
-                </ActionButton>
-                <Link to="/alerts" className={ui.link}>
-                  Xem cảnh báo
-                </Link>
-                {role === 'VIEWER' && (
-                  <p className={styles.viewerNote}>
-                    Tài khoản Viewer chỉ có quyền xem. Không thể điều khiển thiết bị.
-                  </p>
-                )}
+              <Card className="shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-base">Điều khiển còi báo động</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      {reading.door_status
+                        ? 'Cửa kho bị mở ngoài giờ giới nghiêm'
+                        : 'Còi báo động tại chỗ'}
+                    </p>
+                    <Badge variant={buzzer ? 'destructive' : 'secondary'}>
+                      {buzzer ? 'Đang kêu' : 'Tắt'}
+                    </Badge>
+                  </div>
+                  <ActionButton
+                    variant="outline"
+                    disabled={role === 'VIEWER' || !buzzer}
+                    action={() => actions.sendCommand(device.device_id, 'BUZZER_OFF')}
+                    success="Đã gửi lệnh tắt còi."
+                  >
+                    Tắt còi
+                  </ActionButton>
+                  <Button asChild variant="link" className="h-auto p-0">
+                    <Link to="/alerts">Xem cảnh báo</Link>
+                  </Button>
+                  {role === 'VIEWER' && (
+                    <p className="text-xs text-muted-foreground">
+                      Tài khoản Viewer chỉ có quyền xem. Không thể điều khiển thiết bị.
+                    </p>
+                  )}
+                </CardContent>
               </Card>
             ))}
+
           {config && kind !== 'unknown' && (
             <ConfigForm key={device.device_id} config={config} environment={environment} />
           )}
+
           {kind === 'security' && reading && (
-            <Card title="Sự kiện an ninh gần đây">
-              <Table
-                label="Sự kiện an ninh"
-                headers={['Thời gian', 'Cảm biến', 'Sự kiện', 'Cảnh báo']}
-              >
-                {data.presentation.security_events.map((event) => (
-                  <tr key={`${event.recorded_at}-${event.sensor}`}>
-                    <td className="mono">{dateTime(event.recorded_at, true)}</td>
-                    <td className="mono">{event.sensor}</td>
-                    <td>{event.description}</td>
-                    <td>
-                      {event.alert_type ? <Badge value="CRITICAL">{event.alert_type}</Badge> : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </Table>
+            <Card className="shadow-none">
+              <CardHeader>
+                <CardTitle className="text-base">Sự kiện an ninh gần đây</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Thời gian</TableHead>
+                        <TableHead>Cảm biến</TableHead>
+                        <TableHead>Sự kiện</TableHead>
+                        <TableHead>Cảnh báo</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {data.presentation.security_events.map((event) => (
+                        <TableRow key={`${event.recorded_at}-${event.sensor}`}>
+                          <TableCell className="font-mono text-xs">
+                            {dateTime(event.recorded_at, true)}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{event.sensor}</TableCell>
+                          <TableCell>{event.description}</TableCell>
+                          <TableCell>
+                            {event.alert_type ? (
+                              <ToneBadge tone="critical">{event.alert_type}</ToneBadge>
+                            ) : (
+                              '—'
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {!data.presentation.security_events.length && (
+                    <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                      Chưa có sự kiện an ninh.
+                    </p>
+                  )}
+                </div>
+              </CardContent>
             </Card>
           )}
-          <Card title="Lệnh gần đây">
-            <CommandTable commands={commands.slice(0, RECENT_COMMANDS)} />
-            <Link to={`/history?tab=commands&device=${device.device_id}`} className={ui.link}>
-              Xem tất cả trong Lịch sử
-            </Link>
+
+          <Card className="shadow-none">
+            <CardHeader>
+              <CardTitle className="text-base">Lệnh gần đây</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <CommandTable commands={commands.slice(0, RECENT_COMMANDS)} />
+              <Button asChild variant="link" className="h-auto p-0">
+                <Link to={`/history?tab=commands&device=${device.device_id}`}>
+                  Xem tất cả trong Lịch sử
+                </Link>
+              </Button>
+            </CardContent>
           </Card>
         </div>
       </div>
-    </>
+    </div>
   )
 }

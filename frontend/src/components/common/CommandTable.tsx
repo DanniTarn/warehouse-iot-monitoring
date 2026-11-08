@@ -1,25 +1,53 @@
-import type { DeviceCommand } from '../../services/types'
-import { dateTime } from '../../services/format'
-import { Badge, EmptyRow, Table } from './UI'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { CommandStatusBadge } from '@/components/app/kit'
+import { dateTime } from '@/services/format'
+import type { DeviceCommand } from '@/services/types'
+
 export function CommandTable({ commands }: { commands: DeviceCommand[] }) {
   return (
-    <Table
-      label="Lệnh điều khiển"
-      headers={['Thời gian gửi', 'Thiết bị', 'Lệnh', 'Người gửi', 'Trạng thái', 'Phản hồi']}
-    >
-      {commands.map((command) => (
-        <tr key={command.command_id}>
-          <td className="mono">{dateTime(command.sent_at, true)}</td>
-          <td className="mono">{command.device_code}</td>
-          <td className="mono">{command.command_type}</td>
-          <td>{command.username ?? 'Tự động'}</td>
-          <td>
-            <Badge value={command.status} />
-          </td>
-          <td className="mono">{dateTime(command.acknowledged_at, true)}</td>
-        </tr>
-      ))}
-      {!commands.length && <EmptyRow columns={6} message="Chưa có lệnh điều khiển." />}
-    </Table>
+    <div role="region" aria-label="Lệnh điều khiển" className="overflow-x-auto rounded-lg border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Thời gian gửi</TableHead>
+            <TableHead>Thiết bị</TableHead>
+            <TableHead>Lệnh</TableHead>
+            <TableHead>Người gửi</TableHead>
+            <TableHead>Trạng thái</TableHead>
+            <TableHead>Phản hồi</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {commands.map((command) => (
+            <TableRow key={command.command_id}>
+              <TableCell className="font-mono text-xs">
+                {dateTime(command.sent_at, true)}
+              </TableCell>
+              <TableCell className="font-mono text-xs">{command.device_code}</TableCell>
+              <TableCell className="font-mono text-xs">{command.command_type}</TableCell>
+              <TableCell>{command.username ?? 'Tự động'}</TableCell>
+              <TableCell>
+                <CommandStatusBadge status={command.status} />
+              </TableCell>
+              <TableCell className="font-mono text-xs">
+                {dateTime(command.acknowledged_at, true)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {!commands.length && (
+        <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+          Chưa có lệnh điều khiển.
+        </p>
+      )}
+    </div>
   )
 }
