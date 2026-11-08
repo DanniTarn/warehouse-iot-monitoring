@@ -325,11 +325,24 @@ function defaultConfig(deviceId: number, code: string): DeviceConfig {
     updated_at: new Date().toISOString(),
   }
 }
+const passwords = new Map<string, string>()
+function record(user: User, action: string, details: string) {
+  data.audit.unshift({
+    log_id: Math.max(0, ...data.audit.map((item) => item.log_id)) + 1,
+    user_id: user.user_id,
+    username: user.username,
+    action,
+    ip_client: '127.0.0.1',
+    details,
+    created_at: new Date().toISOString(),
+  })
+}
 export const mockApi: ApiClient = {
   async login(username, password) {
     await wait()
     const user = users.find((item) => item.username === username && item.is_active)
-    if (!user || password !== MOCK_PASSWORD) throw new Error('Sai tên đăng nhập hoặc mật khẩu.')
+    if (!user || password !== (passwords.get(username) ?? MOCK_PASSWORD))
+      throw new Error('Sai tên đăng nhập hoặc mật khẩu.')
     return { token: `mock-session-${user.username}`, user: { ...user } }
   },
   async me(token) {
@@ -346,6 +359,11 @@ export const mockApi: ApiClient = {
       presentation: derivePresentation(data),
     })
   },
+  async audit(token) {
+    await wait()
+    requireRole(sessionUser(token), ['ADMIN'])
+    return structuredClone(data.audit)
+  },
   async acknowledgeAlert(token, alertId) {
     await wait()
     const user = sessionUser(token)
@@ -358,6 +376,7 @@ export const mockApi: ApiClient = {
     alert.resolved_by_user_id = user.user_id
     alert.resolved_by_username = user.username
     alert.resolved_at = new Date().toISOString()
+    record(user, 'ACKNOWLEDGE_ALERT', `alert_id ${alertId}`)
     return structuredClone(alert)
   },
   async sendCommand(token, deviceId, type) {
@@ -394,6 +413,7 @@ export const mockApi: ApiClient = {
       config.fan_mode = type === 'FAN_ON' ? 'ON' : type === 'FAN_OFF' ? 'OFF' : 'AUTO'
       config.updated_at = sentAt
     }
+    record(user, 'MANUAL_CONTROL', `${type} gửi tới ${device.device_code}`)
     return structuredClone(command)
   },
   async registerDevice(token, input) {
@@ -432,6 +452,7 @@ export const mockApi: ApiClient = {
     const config = defaultConfig(deviceId, device.device_code)
     devices.push(device)
     configs.push(config)
+    record(user, 'REGISTER_DEVICE', device.device_code)
     return {
       device: structuredClone(device),
       config: structuredClone(config),
@@ -447,6 +468,7 @@ export const mockApi: ApiClient = {
       throw new HttpError(409, 'Thiết bị không ở trạng thái chờ kích hoạt hoặc thiếu token.')
     }
     device.lifecycle_status = 'ACTIVE'
+    record(user, 'ACTIVATE_DEVICE', device.device_code)
     return structuredClone(device)
   },
   async setLifecycle(token, deviceId, status) {
@@ -463,6 +485,7 @@ export const mockApi: ApiClient = {
     device.lifecycle_status = status
     device.online = false
     if (status === 'ACTIVE') device.last_heartbeat = null
+    record(user, status === 'DECOMMISSIONED' ? 'DECOMMISSION' : 'UPDATE_LIFECYCLE', `${device.device_code} → ${status}`)
     return structuredClone(device)
   },
   async rotateDeviceToken(token, deviceId) {
@@ -473,6 +496,7 @@ export const mockApi: ApiClient = {
     if (device.lifecycle_status === 'DECOMMISSIONED') {
       throw new HttpError(404, 'Không tìm thấy thiết bị có thể cấp lại token.')
     }
+    record(user, 'ROTATE_DEVICE_TOKEN', device.device_code)
     return `mock-token-${device.device_code}-${Date.now()}`
   },
   async updateConfig(token, deviceId, patch) {
@@ -511,6 +535,7 @@ export const mockApi: ApiClient = {
       config.night_mode_enabled = patch.night_mode_enabled
     }
     config.updated_at = new Date().toISOString()
+    record(user, 'UPDATE_CONFIG', `device_id ${deviceId}`)
     return structuredClone(config)
   },
   async createUser(token, input) {
@@ -543,6 +568,8 @@ export const mockApi: ApiClient = {
       last_login: null,
     }
     users.push(account)
+    passwords.set(account.username, input.password)
+    record(user, 'CREATE_USER', `${account.username} · ${account.role}`)
     return structuredClone(account)
   },
   async updateUser(token, userId, patch) {
@@ -568,6 +595,7 @@ export const mockApi: ApiClient = {
     }
     if (patch.role !== undefined) account.role = patch.role
     if (patch.is_active !== undefined) account.is_active = patch.is_active
+    record(user, 'UPDATE_USER', account.username)
     return structuredClone(account)
   },
 }

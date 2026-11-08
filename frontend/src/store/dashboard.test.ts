@@ -276,6 +276,18 @@ describe('dashboard applyEvent fan mode', () => {
   })
 })
 
+describe('dashboard applyEvent command ordering', () => {
+  it('keeps an acknowledgement when the slower PENDING response arrives after it', () => {
+    load()
+    useDashboard.getState().applyEvent({
+      type: 'command_status',
+      data: command(1, { status: 'ACKNOWLEDGED', acknowledged_at: at(11) }),
+    })
+    useDashboard.getState().applyEvent({ type: 'command_status', data: command(1) })
+    expect(useDashboard.getState().data!.commands[0].status).toBe('ACKNOWLEDGED')
+  })
+})
+
 describe('dashboard applyEvent command buffer', () => {
   it('keeps only the newest 200 commands from the live feed', () => {
     load()

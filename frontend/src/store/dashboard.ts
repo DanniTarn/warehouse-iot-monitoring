@@ -2,10 +2,23 @@ import { create } from 'zustand'
 import { api, dataSource, type DashboardData } from '../services/api'
 import { derivePresentation } from '../services/dashboardView'
 import type { RealtimeEvent, RealtimeState } from '../services/realtime'
-import type { Device, DeviceCommand, DeviceConfig, User } from '../services/types'
+import type {
+  AuditLog,
+  CommandStatus,
+  Device,
+  DeviceCommand,
+  DeviceConfig,
+  User,
+} from '../services/types'
 
 const TELEMETRY_LIMIT = 1500
 const COMMAND_LIMIT = 200
+const COMMAND_PROGRESS: Record<CommandStatus, number> = {
+  PENDING: 0,
+  SENT: 1,
+  ACKNOWLEDGED: 2,
+  FAILED: 2,
+}
 const initialConnection: RealtimeState = dataSource === 'api' ? 'reconnecting' : 'live'
 
 export type DashboardChange =
@@ -13,6 +26,7 @@ export type DashboardChange =
   | { type: 'device_saved'; data: Device }
   | { type: 'config_saved'; data: DeviceConfig }
   | { type: 'user_saved'; data: User }
+  | { type: 'audit_loaded'; data: AuditLog[] }
 
 interface DashboardState {
   data: DashboardData | null
@@ -137,7 +151,10 @@ export const useDashboard = create<DashboardState>((set) => ({
           const known = data.commands.some((item) => item.command_id === command.command_id)
           const commands = known
             ? data.commands.map((item) =>
-                item.command_id === command.command_id ? command : item,
+                item.command_id === command.command_id &&
+                COMMAND_PROGRESS[command.status] >= COMMAND_PROGRESS[item.status]
+                  ? command
+                  : item,
               )
             : [command, ...data.commands].slice(0, COMMAND_LIMIT)
           const fanMode = fanModeOf(command)
@@ -164,6 +181,8 @@ export const useDashboard = create<DashboardState>((set) => ({
               configs: upsert(data.configs, change.data, (config) => config.device_id),
             }),
           }
+        case 'audit_loaded':
+          return { data: { ...data, audit: change.data } }
         case 'user_saved':
           return {
             data: {

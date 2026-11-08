@@ -59,6 +59,9 @@ export const realApi: ApiClient = {
   me(token) {
     return request<User>('/auth/me', { token })
   },
+  audit(token) {
+    return request<AuditLog[]>('/audit-logs?limit=200', { token })
+  },
   async dashboard(token) {
     const user = await realApi.me(token)
     const admin = user.role === 'ADMIN'
@@ -69,9 +72,7 @@ export const realApi: ApiClient = {
       request<DeviceCommand[]>('/commands?limit=200', { token }),
       request<Warehouse[]>('/warehouses', { token }),
       admin ? request<User[]>('/users', { token }) : Promise.resolve<User[]>([]),
-      admin
-        ? request<AuditLog[]>('/audit-logs?limit=200', { token })
-        : Promise.resolve<AuditLog[]>([]),
+      admin ? realApi.audit(token) : Promise.resolve<AuditLog[]>([]),
     ])
     const configs = await loadConfigs(devices, token)
     const data: DashboardData = {
