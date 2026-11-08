@@ -1,15 +1,55 @@
 import { useState, type FormEvent } from 'react'
 import { useDashboard } from '../store/dashboard'
+import { useActions } from '../store/actions'
 import { LIFECYCLES } from '../services/config'
-import { BackLink, Badge, Button, Card, Field, Notice, PageHeader } from '../components/common/UI'
+import {
+  ActionLink,
+  BackLink,
+  Badge,
+  Button,
+  Card,
+  Field,
+  Notice,
+  PageHeader,
+  SecretToken,
+} from '../components/common/UI'
 import styles from './Pages.module.css'
 export default function DeviceAdd() {
   const data = useDashboard((s) => s.data)!
-  const [kind, setKind] = useState('environment')
-  const [notice, setNotice] = useState(false)
-  function submit(event: FormEvent<HTMLFormElement>) {
+  const actions = useActions()
+  const [created, setCreated] = useState<{ id: number; name: string; code: string; token: string }>()
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState('')
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setNotice(true)
+    const form = event.currentTarget
+    const values = new FormData(form)
+    const warehouse = String(values.get('warehouse_id') || '')
+    const owner = String(values.get('assigned_user_id') || '')
+    setPending(true)
+    setError('')
+    try {
+      const result = await actions.registerDevice({
+        device_name: String(values.get('device_name') || '').trim(),
+        device_code: String(values.get('device_code') || '')
+          .trim()
+          .toUpperCase(),
+        mac_address: String(values.get('mac_address') || '').trim(),
+        warehouse_id: warehouse ? Number(warehouse) : null,
+        assigned_user_id: owner ? Number(owner) : null,
+      })
+      setCreated({
+        id: result.device.device_id,
+        name: result.device.device_name,
+        code: result.device.device_code,
+        token: result.auth_token,
+      })
+      form.reset()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Không đăng ký được thiết bị.')
+    } finally {
+      setPending(false)
+    }
   }
   return (
     <>
@@ -39,14 +79,14 @@ export default function DeviceAdd() {
           <Card title="Thông tin đăng ký">
             <div className={styles.fields}>
               <Field id="add-name" label="Tên hiển thị" hint="device_name">
-                <input id="add-name" defaultValue="Node 3 · Môi trường" required />
+                <input id="add-name" name="device_name" required />
               </Field>
               <Field id="add-code" label="Mã thiết bị" hint="device_code · duy nhất">
                 <input
                   id="add-code"
-                  defaultValue="NODE3_ENV"
-                  pattern="[A-Z0-9_]+"
-                  title="Chữ in hoa, số và dấu gạch dưới"
+                  name="device_code"
+                  pattern="NODE[0-9]+_(ENV|SEC)"
+                  title="Ví dụ: NODE3_ENV hoặc NODE4_SEC"
                   required
                   className="mono"
                 />
@@ -54,7 +94,7 @@ export default function DeviceAdd() {
               <Field id="add-mac" label="Địa chỉ MAC của ESP32" hint="mac_address">
                 <input
                   id="add-mac"
-                  defaultValue="24:6F:28:B0:77:5A"
+                  name="mac_address"
                   pattern="([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}"
                   title="Ví dụ: 24:6F:28:B0:77:5A"
                   required
@@ -62,7 +102,8 @@ export default function DeviceAdd() {
                 />
               </Field>
               <Field id="add-warehouse" label="Kho" hint="warehouse_id">
-                <select id="add-warehouse">
+                <select id="add-warehouse" name="warehouse_id" defaultValue="">
+                  <option value="">Chưa chọn kho</option>
                   {data.warehouses.map((w) => (
                     <option value={w.warehouse_id} key={w.warehouse_id}>
                       {w.warehouse_name}
@@ -71,7 +112,7 @@ export default function DeviceAdd() {
                 </select>
               </Field>
               <Field id="add-owner" label="Người phụ trách" hint="assigned_user_id">
-                <select id="add-owner" defaultValue="2">
+                <select id="add-owner" name="assigned_user_id" defaultValue="">
                   <option value="">Chưa phân công</option>
                   {data.users
                     .filter((user) => user.is_active)
@@ -83,38 +124,21 @@ export default function DeviceAdd() {
                 </select>
               </Field>
             </div>
-            <fieldset>
-              <legend>Loại node</legend>
-              <div className={styles.fields}>
-                <label className={styles.radio}>
-                  <input
-                    type="radio"
-                    name="kind"
-                    checked={kind === 'environment'}
-                    onChange={() => setKind('environment')}
-                  />
-                  Môi trường · DHT22, MQ-2, Relay
-                </label>
-                <label className={styles.radio}>
-                  <input
-                    type="radio"
-                    name="kind"
-                    checked={kind === 'security'}
-                    onChange={() => setKind('security')}
-                  />
-                  An ninh · MC-38, PIR, Buzzer, LED
-                </label>
-              </div>
-            </fieldset>
             <p className="small secondary">
               Thiết bị mới có trạng thái REGISTERED. Token xác thực sẽ được tạo sau khi đăng ký.
             </p>
-            <Button type="submit" variant="primary">
-              Đăng ký thiết bị
+            <Button type="submit" variant="primary" disabled={pending}>
+              {pending ? 'Đang đăng ký…' : 'Đăng ký thiết bị'}
             </Button>
-            {notice && (
+            {error && <Notice error>{error}</Notice>}
+            {created && (
               <Notice>
-                Đăng ký và cấp token được triển khai ở mốc 29/10. Chưa tạo thiết bị hoặc token.
+                Đã đăng ký {created.name} · <span className="mono">{created.code}</span>. Token chỉ
+                hiển thị một lần, sao chép ngay và không đưa lên GitHub.
+                <SecretToken token={created.token} />
+                <ActionLink to={`/devices/${created.id}`} primary>
+                  Mở trang thiết bị
+                </ActionLink>
               </Notice>
             )}
           </Card>
