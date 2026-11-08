@@ -257,6 +257,13 @@ export function Connection({ device }: { device: Device }) {
     </span>
   )
 }
+type StatTone = 'good' | 'warning' | 'critical' | 'muted'
+const STAT_TONE_CLASS: Record<StatTone, string> = {
+  good: '',
+  muted: '',
+  warning: styles.statWarning,
+  critical: styles.statCritical,
+}
 export function Stat({
   label,
   sensor,
@@ -270,10 +277,10 @@ export function Stat({
   value: string
   unit?: string
   status: string
-  tone?: 'good' | 'warning' | 'critical' | 'muted'
+  tone?: StatTone
 }) {
   return (
-    <Card className={styles.stat}>
+    <Card className={`${styles.stat} ${STAT_TONE_CLASS[tone]}`}>
       <div className={styles.statLabel}>
         <span>{label}</span>
         <span className="mono small muted">{sensor}</span>

@@ -6,6 +6,7 @@ import { api } from './services/api'
 import App from './App'
 import { useAuth } from './store/auth'
 import { useDashboard } from './store/dashboard'
+import type { Alert, Severity } from './services/types'
 
 beforeEach(() => {
   sessionStorage.clear()
@@ -281,6 +282,67 @@ describe('real actions against the store', () => {
     await open('/alerts', 'viewer01')
     expect((await screen.findAllByText('Chưa xử lý')).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: 'Xác nhận đã xử lý' })).not.toBeInTheDocument()
+  })
+})
+
+describe('overview alerts', () => {
+  const door = 'Cửa kho bị mở ngoài giờ giới nghiêm'
+  function alert(alert_id: number, severity: Severity, alert_message: string): Alert {
+    return {
+      alert_id,
+      device_id: 2,
+      device_code: 'NODE2_SEC',
+      alert_type: severity === 'CRITICAL' ? 'DOOR_BREACH' : 'MOTION_INTRUSION',
+      severity,
+      alert_message,
+      is_acknowledged: false,
+      resolved_by_user_id: null,
+      resolved_by_username: null,
+      created_at: '2026-10-13T21:40:00+07:00',
+      resolved_at: null,
+    }
+  }
+  async function openOverview(alerts: Alert[]) {
+    const load = api.dashboard
+    vi.spyOn(api, 'dashboard').mockImplementation(async (token) => ({
+      ...(await load.call(api, token)),
+      alerts,
+    }))
+    await open('/')
+    await screen.findByRole('heading', { name: 'Tổng quan', level: 1 })
+    const banner = screen
+      .getAllByRole('alert')
+      .find((node) => node.textContent?.includes('CRITICAL ·'))!
+    const list = screen.getByRole('heading', { name: 'Cảnh báo đang mở' }).closest('section')!
+    return { banner, list }
+  }
+
+  it('lists only the alerts the banner does not show and counts them in the banner', async () => {
+    const { banner, list } = await openOverview([
+      alert(10, 'CRITICAL', door),
+      alert(9, 'WARNING', 'Chuyển động lúc 21:39'),
+      alert(8, 'WARNING', 'Chuyển động lúc 21:38'),
+      { ...alert(7, 'WARNING', 'Chuyển động đã xử lý'), is_acknowledged: true },
+    ])
+    expect(banner).toHaveTextContent(door)
+    expect(banner).toHaveTextContent('Còn 2 cảnh báo đang mở khác.')
+    expect(within(banner).getByRole('link', { name: 'Xem tất cả cảnh báo' })).toHaveAttribute(
+      'href',
+      '/alerts',
+    )
+    expect(within(list).queryByText(door)).not.toBeInTheDocument()
+    expect(within(list).getByText('Chuyển động lúc 21:39')).toBeVisible()
+    expect(within(list).getByText('Chuyển động lúc 21:38')).toBeVisible()
+    expect(within(list).queryByText('Chuyển động đã xử lý')).not.toBeInTheDocument()
+  })
+
+  it('drops the count and says so in the list when the banner holds the only open alert', async () => {
+    const { banner, list } = await openOverview([alert(10, 'CRITICAL', door)])
+    expect(banner).toHaveTextContent(door)
+    expect(banner).not.toHaveTextContent('cảnh báo đang mở khác')
+    expect(within(banner).queryByRole('link')).not.toBeInTheDocument()
+    expect(within(list).queryByText(door)).not.toBeInTheDocument()
+    expect(within(list).getByText('Không có cảnh báo nào khác.')).toBeVisible()
   })
 })
 

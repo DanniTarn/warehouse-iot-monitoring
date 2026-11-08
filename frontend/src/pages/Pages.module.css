@@ -65,10 +65,16 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.bannerText strong {
+.bannerText > * {
   display: block;
+}
+.bannerText strong {
   font-size: 16px;
   margin: 2px 0;
+}
+.bannerText a {
+  color: var(--surface);
+  font-weight: 600;
 }
 .banner button {
   border-color: var(--surface);

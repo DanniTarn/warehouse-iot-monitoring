@@ -225,6 +225,16 @@
   gap: 8px;
   padding: 14px 16px;
 }
+.statWarning {
+  border-color: var(--warn-text);
+  box-shadow: inset 4px 0 0 var(--warn-text);
+  background: var(--warn-bg);
+}
+.statCritical {
+  border-color: var(--crit-solid);
+  box-shadow: inset 4px 0 0 var(--crit-solid);
+  background: var(--crit-bg);
+}
 .reading {
   font: 600 30px/1.1 var(--font-mono);
   letter-spacing: -0.02em;
