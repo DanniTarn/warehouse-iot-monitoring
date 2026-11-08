@@ -12,7 +12,7 @@ export function CommandTable({ commands }: { commands: DeviceCommand[] }) {
           <td className="mono">{dateTime(command.sent_at, true)}</td>
           <td className="mono">{command.device_code}</td>
           <td className="mono">{command.command_type}</td>
-          <td>{command.username}</td>
+          <td>{command.username ?? 'Tự động'}</td>
           <td>
             <Badge value={command.status} />
           </td>
