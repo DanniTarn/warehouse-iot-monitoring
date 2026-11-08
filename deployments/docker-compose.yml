@@ -81,6 +81,21 @@ services:
     ports:
       - "3000:3000"
 
+  mqtt-relay:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    depends_on:
+      mosquitto:
+        condition: service_started
+    environment:
+      LOCAL_URL: mqtt://mosquitto:1883
+      REMOTE_URL: ${MQTT_RELAY_REMOTE:-mqtt://broker.hivemq.com:1883}
+      TOPIC: ${MQTT_TOPIC_PREFIX:-khohang}/#
+    volumes:
+      - ./mqtt-relay/relay.js:/app/relay.js:ro
+    command: ["node", "/app/relay.js"]
+
 volumes:
   pgdata:
   mongodata:
