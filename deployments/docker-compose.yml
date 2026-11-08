@@ -1,27 +1,86 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: warehouse_db
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_DB: warehouse_db
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_USER: warehouse_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD chưa được cấu hình}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ../backend/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
+      - ../backend/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U warehouse_app -d warehouse_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:?MONGO_USERNAME chưa được cấu hình}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?MONGO_PASSWORD chưa được cấu hình}
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongodata:/data/db
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --username "$$MONGO_INITDB_ROOT_USERNAME"
+          --password "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin
+          --eval 'db.adminCommand({ping:1}).ok' | grep -q 1
+      interval: 10s
+      timeout: 5s
+      retries: 15
 
   mosquitto:
-    image: eclipse-mosquitto:latest
-    container_name: warehouse_broker
-    restart: always
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
     ports:
       - "1883:1883"
-      - "9001:9001"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+
+  backend:
+    build:
+      context: ../backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    environment:
+      PORT: 3000
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: warehouse_app
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: warehouse_db
+      MONGO_URI: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongo:27017/warehouse_history?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET chưa được cấu hình}
+      JWT_EXPIRES_IN: 24h
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      MQTT_BROKER_URL: mqtt://mosquitto:1883
+      MQTT_TOPIC_PREFIX: khohang
+      OFFLINE_TIMEOUT_SECONDS: 90
+      COMMAND_TIMEOUT_SECONDS: 10
+      NIGHT_TIMEZONE: Asia/Ho_Chi_Minh
+      NIGHT_START_HOUR: 20
+      NIGHT_END_HOUR: 6
+      SEED_DEFAULT_NODES: ${SEED_DEFAULT_NODES:-false}
+    ports:
+      - "3000:3000"
 
 volumes:
   pgdata:
+  mongodata:
+  mosquitto_data:
