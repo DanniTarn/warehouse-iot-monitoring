@@ -114,12 +114,13 @@ describe('AC-3 and AC-6: login and honest prototype interactions', () => {
     await user.type(await screen.findByLabelText('Tìm thiết bị'), 'missing-device')
     expect(screen.getByText('Không tìm thấy thiết bị phù hợp.')).toBeVisible()
   })
-  it('does not claim to send a hardware command from this milestone', async () => {
+  it('stops the buzzer after a BUZZER_OFF command', async () => {
     const user = userEvent.setup()
     await open('/devices/2')
-    await user.click(await screen.findByRole('button', { name: 'Tắt còi' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Chưa gửi hoặc lưu thay đổi.')
-    expect(screen.getAllByText('Đang kêu').length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Đang kêu')).length).toBeGreaterThan(0)
+    await user.click(screen.getByRole('button', { name: 'Tắt còi' }))
+    await waitFor(() => expect(screen.queryByText('Đang kêu')).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Tắt còi' })).toBeDisabled()
   })
   it('logs out and removes authenticated content', async () => {
     const user = userEvent.setup()
