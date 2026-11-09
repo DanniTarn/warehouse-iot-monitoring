@@ -13,14 +13,12 @@ import {
 } from '@/components/ui/table'
 import { PageHeader } from '@/components/app/page-header'
 import { ActionButton, Field, Notice, ToneBadge } from '@/components/app/kit'
+import { NativeSelect } from '@/components/app/native-select'
 import { dateTime } from '@/services/format'
 import type { Role } from '@/services/types'
 import { useActions } from '@/store/actions'
 import { useAuth } from '@/store/auth'
 import { useDashboard } from '@/store/dashboard'
-
-const selectClass =
-  'h-8 rounded-md border border-input bg-transparent px-2 font-mono text-xs shadow-xs outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50'
 
 export default function Users() {
   const data = useDashboard((s) => s.data)!
@@ -96,7 +94,7 @@ export default function Users() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <select
+                    <NativeSelect
                       aria-label={`Vai trò của ${user.username}`}
                       value={user.role}
                       disabled={user.user_id === self}
@@ -106,12 +104,14 @@ export default function Users() {
                           `Đã đổi vai trò của ${user.username}.`,
                         )
                       }
-                      className={selectClass}
+                      wrapperClassName="w-auto"
+                      iconClassName="right-2 size-3.5"
+                      className="h-8 w-auto pl-2 pr-7 font-mono text-xs"
                     >
                       {['ADMIN', 'OPERATOR', 'VIEWER'].map((role) => (
                         <option key={role}>{role}</option>
                       ))}
-                    </select>
+                    </NativeSelect>
                   </TableCell>
                   <TableCell>
                     <ToneBadge tone={user.is_active ? 'good' : 'muted'}>
@@ -157,11 +157,11 @@ export default function Users() {
                 <Input id="new-email" name="email" type="email" autoComplete="off" />
               </Field>
               <Field label="Vai trò" id="new-role">
-                <select id="new-role" name="role" defaultValue="VIEWER" className={selectClass}>
+                <NativeSelect id="new-role" name="role" defaultValue="VIEWER">
                   <option value="VIEWER">VIEWER · chỉ xem</option>
                   <option value="OPERATOR">OPERATOR · xử lý cảnh báo, điều khiển</option>
                   <option value="ADMIN">ADMIN · toàn quyền</option>
-                </select>
+                </NativeSelect>
               </Field>
               <Field label="Mật khẩu tạm" id="new-password" hint="ít nhất 8 ký tự">
                 <Input
