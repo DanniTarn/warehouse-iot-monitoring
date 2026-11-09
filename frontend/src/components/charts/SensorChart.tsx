@@ -68,8 +68,6 @@ export function SensorChart({
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <ComposedChart
               data={buckets}
-              syncId="sensors"
-              syncMethod="value"
               margin={{ top: 12, right: 12, bottom: 0, left: -18 }}
               role="img"
               aria-label={`${title}: ${number(data.at(-1)?.[field], digits)} ${unit}`}

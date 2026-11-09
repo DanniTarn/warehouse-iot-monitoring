@@ -39,7 +39,7 @@ The selected source keeps its token in memory and `sessionStorage`. A refresh re
 - Login, logout, session restoration and role guards.
 - All nine designs: login, overview, devices, registration, environment detail, security detail, alerts, history and users.
 - Sidebar active state, direct URL 403 states and Admin only audit navigation.
-- Three Recharts plots with synchronized hover, separate axes, thresholds and 1/6/24 hour display ranges.
+- Three Recharts plots with independent hover, separate axes, thresholds and 1/6/24 hour display ranges.
 - Local search, lifecycle and warehouse filters, alert filters, history tabs and date filters, local pagination, editable form previews and config Undo.
 - Vietnamese formatting, live relative heartbeat labels, loading/error/empty states and keyboard focus.
 - Responsive layout at 1440px and 375px. Tables scroll inside their cards.
