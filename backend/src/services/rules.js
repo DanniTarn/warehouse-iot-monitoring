@@ -15,7 +15,9 @@ async function automaticCommand(device, commandType) {
 }
 
 async function evaluateRules(device, config, current, previous) {
-  const night = nightTime(new Date(), env.nightTimezone, env.nightStartHour, env.nightEndHour);
+  const start = Number.isInteger(config?.curfew_start_hour) ? config.curfew_start_hour : env.nightStartHour;
+  const end = Number.isInteger(config?.curfew_end_hour) ? config.curfew_end_hour : env.nightEndHour;
+  const night = nightTime(new Date(), env.nightTimezone, start, end);
   const { alerts, commands } = planRules(device.device_code, config, current, previous, night);
   for (const alert of alerts) {
     await createAlert(device.device_id, alert.type, alert.severity, alert.message);

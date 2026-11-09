@@ -52,6 +52,8 @@ export interface DeviceConfig {
   temperature_threshold: number // °C
   telemetry_interval: number // seconds
   night_mode_enabled: boolean
+  curfew_start_hour: number
+  curfew_end_hour: number
   fan_mode: FanMode
   updated_at: string
 }
@@ -136,4 +138,6 @@ export interface ConfigPatch {
   smoke_gas_threshold?: number | null
   telemetry_interval?: number
   night_mode_enabled?: boolean
+  curfew_start_hour?: number
+  curfew_end_hour?: number
 }

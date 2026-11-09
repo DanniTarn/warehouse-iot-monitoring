@@ -29,7 +29,7 @@ import { CommandTable } from '@/components/common/CommandTable'
 import { FanControl } from '@/components/control/FanControl'
 import { ConfigForm } from '@/components/control/ConfigForm'
 import { getDeviceKind, MONITORING } from '@/services/config'
-import { dateTime, number } from '@/services/format'
+import { dateTime, isNight, number } from '@/services/format'
 import { buzzerSounding } from '@/services/dashboardView'
 import { useActions } from '@/store/actions'
 import { useAuth } from '@/store/auth'
@@ -56,6 +56,11 @@ export default function DeviceDetail() {
   const config = data.configs.find((c) => c.device_id === device.device_id)
   const reading = data.telemetry.find((row) => row.device_id === device.device_id)
   const environment = kind === 'environment'
+  const night = isNight(
+    config?.curfew_start_hour ?? 20,
+    config?.curfew_end_hour ?? 6,
+    data.system.timezone,
+  )
   const humidityThreshold = config?.humidity_threshold ?? MONITORING.humidityThreshold
   const temperatureThreshold = config?.temperature_threshold ?? 50
   const humidityHigh = reading?.humidity != null && reading.humidity > humidityThreshold
@@ -247,12 +252,12 @@ export default function DeviceDetail() {
                 value={reading.door_status ? 'Mở' : 'Đóng'}
                 status={
                   reading.door_status
-                    ? data.system.night
+                    ? night
                       ? 'Ngoài giờ giới nghiêm'
                       : 'Cửa mở trong giờ làm việc'
                     : 'Đóng'
                 }
-                tone={reading.door_status ? (data.system.night ? 'critical' : 'warning') : 'good'}
+                tone={reading.door_status ? (night ? 'critical' : 'warning') : 'good'}
               />
               <StatCard
                 label="Chuyển động"

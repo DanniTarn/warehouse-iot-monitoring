@@ -10,7 +10,7 @@ Backend dành cho Người 1, viết bằng Node.js, Express, PostgreSQL, MongoD
 - MQTT: dữ liệu Node 1 (nhiệt độ, độ ẩm, khói), Node 2 (cửa, chuyển động), heartbeat và ACK.
 - PostgreSQL: lưu tài khoản, thiết bị, cấu hình, lệnh điều khiển, audit log và bản ghi telemetry/cảnh báo phục vụ hợp đồng Frontend.
 - MongoDB: lưu collection `telemetries`, `alerts`; tự đồng bộ thông qua hàng đợi PostgreSQL với cơ chế retry khi MongoDB tạm gián đoạn.
-- Rule engine: độ ẩm cao bật quạt trong chế độ AUTO; vượt ngưỡng khói cảnh báo CRITICAL, gửi còi/LED đỏ Node 2; phát hiện cửa mở hoặc chuyển động mọi lúc, WARNING trong giờ làm việc và CRITICAL ngoài giờ 20:00–06:00. Còi chỉ kêu ngoài giờ.
+- Rule engine: độ ẩm cao bật quạt trong chế độ AUTO; vượt ngưỡng khói cảnh báo CRITICAL, gửi còi/LED đỏ Node 2; phát hiện cửa mở hoặc chuyển động mọi lúc, WARNING trong giờ làm việc và CRITICAL ngoài giờ giới nghiêm của thiết bị. Backend gửi `guard_mode on/off` xuống Node 2 theo giờ này, mỗi lần heartbeat và mỗi lần lưu cấu hình.
 - Phát hiện mất kết nối sau 90 giây; điều khiển PENDING → SENT → ACKNOWLEDGED / FAILED, timeout 10 giây.
 - WebSocket `/ws` gửi `telemetry`, `device_status`, `alert_created`, `alert_updated`, `command_status`.
 
@@ -119,7 +119,7 @@ Chỉ Admin nhận token thiết bị ngay sau khi đăng ký hoặc cấp lại
 
 Các lệnh người dùng: `FAN_ON`, `FAN_OFF`, `FAN_AUTO`, `BUZZER_OFF`. Các lệnh tự động bổ sung: `BUZZER_ON`, `LED_RED`. Lệnh tự động có `user_id=null`, `username=SYSTEM`.
 
-Cấu hình mặc định: ngưỡng độ ẩm 65%, ngưỡng khói 300, gửi dữ liệu mỗi 5 giây, chế độ ban đêm bật, quạt ở chế độ AUTO. Giờ ban đêm mặc định 20:00–06:00 tại Việt Nam, có thể sửa trong `.env`.
+Cấu hình mặc định: ngưỡng độ ẩm 65%, ngưỡng khói 300, gửi dữ liệu mỗi 5 giây, cảnh giới bật, quạt ở chế độ AUTO. Giờ giới nghiêm lưu theo từng thiết bị trong `device_configs` (`curfew_start_hour`, `curfew_end_hour`, mặc định 20:00–06:00) và chỉnh được ở trang thiết bị Node 2. Biến `NIGHT_*` trong `.env` là giá trị mặc định/fallback.
 
 ## 5. MQTT – giao kèo với Người 2
 
