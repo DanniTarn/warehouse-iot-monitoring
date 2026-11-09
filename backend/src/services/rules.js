@@ -2,7 +2,7 @@ const { env } = require('../config/env');
 const { deviceByCode } = require('./store');
 const { createAlert } = require('./alerts');
 const { createCommand } = require('./commands');
-const { nightTime } = require('../utils/data');
+const { nightWindow, guardArmed } = require('../utils/data');
 const { planRules } = require('../utils/ruleDecisions');
 
 async function automaticCommand(device, commandType) {
@@ -15,10 +15,18 @@ async function automaticCommand(device, commandType) {
 }
 
 async function evaluateRules(device, config, current, previous) {
-  const start = Number.isInteger(config?.curfew_start_hour) ? config.curfew_start_hour : env.nightStartHour;
-  const end = Number.isInteger(config?.curfew_end_hour) ? config.curfew_end_hour : env.nightEndHour;
-  const night = nightTime(new Date(), env.nightTimezone, start, end);
-  const { alerts, commands } = planRules(device.device_code, config, current, previous, night);
+  const startHour = Number.isInteger(config?.curfew_start_hour) ? config.curfew_start_hour : env.nightStartHour;
+  const startMinute = Number.isInteger(config?.curfew_start_minute) ? config.curfew_start_minute : 0;
+  const endHour = Number.isInteger(config?.curfew_end_hour) ? config.curfew_end_hour : env.nightEndHour;
+  const endMinute = Number.isInteger(config?.curfew_end_minute) ? config.curfew_end_minute : 0;
+  const night = nightWindow(
+    new Date(),
+    env.nightTimezone,
+    startHour * 60 + startMinute,
+    endHour * 60 + endMinute
+  );
+  const armed = guardArmed(config, new Date(), env.nightTimezone, env.nightStartHour, env.nightEndHour);
+  const { alerts, commands } = planRules(device.device_code, config, current, previous, night, armed);
   for (const alert of alerts) {
     await createAlert(device.device_id, alert.type, alert.severity, alert.message);
   }

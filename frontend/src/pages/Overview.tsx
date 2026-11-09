@@ -37,7 +37,9 @@ export default function Overview() {
   const secConfig = data.configs.find((config) => config.device_id === secDevice?.device_id)
   const night = isNight(
     secConfig?.curfew_start_hour ?? 20,
+    secConfig?.curfew_start_minute ?? 0,
     secConfig?.curfew_end_hour ?? 6,
+    secConfig?.curfew_end_minute ?? 0,
     data.system.timezone,
   )
   const env = data.telemetry.find((row) => row.device_code === MONITORING.environmentCode)

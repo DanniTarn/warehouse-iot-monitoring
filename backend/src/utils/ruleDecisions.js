@@ -1,4 +1,4 @@
-function planRules(code, config, current, previous, atNight) {
+function planRules(code, config, current, previous, atNight, armed = atNight) {
   const alerts = [];
   const commands = [];
   const before = previous || {};
@@ -27,7 +27,7 @@ function planRules(code, config, current, previous, atNight) {
       }
     }
   }
-  if (code.endsWith('_SEC') && config.night_mode_enabled) {
+  if (code.endsWith('_SEC') && armed) {
     const doorOpened = current.door_status === true && before.door_status !== true;
     const motion = current.motion_detected === true && before.motion_detected !== true;
     if (doorOpened) alerts.push({

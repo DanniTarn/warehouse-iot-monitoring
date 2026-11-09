@@ -33,17 +33,35 @@ function mapTelemetry(payload) {
   return fields;
 }
 
+function minutesOfDay(now = new Date(), timezone = env.nightTimezone) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: timezone
+  }).formatToParts(now);
+  const value = type => Number(parts.find(part => part.type === type)?.value ?? 0);
+  return value('hour') * 60 + value('minute');
+}
+
+function nightWindow(now, timezone, startMinutes, endMinutes) {
+  const current = minutesOfDay(now, timezone);
+  return startMinutes === endMinutes ||
+    (startMinutes > endMinutes ? current >= startMinutes || current < endMinutes : current >= startMinutes && current < endMinutes);
+}
+
 function nightTime(now = new Date(), timezone = env.nightTimezone, start = env.nightStartHour, end = env.nightEndHour) {
-  const hour = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: timezone }).format(now));
-  return start === end || (start > end ? hour >= start || hour < end : hour >= start && hour < end);
+  return nightWindow(now, timezone, start * 60, end * 60);
 }
 
 function guardArmed(config, now, timezone, fallbackStart, fallbackEnd) {
   if (config?.guard_mode === 'ON') return true;
   if (config?.guard_mode === 'OFF') return false;
-  const start = Number.isInteger(config?.curfew_start_hour) ? config.curfew_start_hour : fallbackStart;
-  const end = Number.isInteger(config?.curfew_end_hour) ? config.curfew_end_hour : fallbackEnd;
-  return nightTime(now, timezone, start, end);
+  const startHour = Number.isInteger(config?.curfew_start_hour) ? config.curfew_start_hour : fallbackStart;
+  const startMinute = Number.isInteger(config?.curfew_start_minute) ? config.curfew_start_minute : 0;
+  const endHour = Number.isInteger(config?.curfew_end_hour) ? config.curfew_end_hour : fallbackEnd;
+  const endMinute = Number.isInteger(config?.curfew_end_minute) ? config.curfew_end_minute : 0;
+  return nightWindow(now, timezone, startHour * 60 + startMinute, endHour * 60 + endMinute);
 }
 
-module.exports = { isOnline, deviceView, toBoolean, mapTelemetry, nightTime, guardArmed };
+module.exports = { isOnline, deviceView, toBoolean, mapTelemetry, nightTime, nightWindow, guardArmed };

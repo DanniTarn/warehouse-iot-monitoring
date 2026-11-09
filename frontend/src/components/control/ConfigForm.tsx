@@ -9,6 +9,16 @@ import { useActions } from '@/store/actions'
 import { useAuth } from '@/store/auth'
 import { cn } from '@/lib/utils'
 
+const pad = (value: number) => String(value).padStart(2, '0')
+const timeValue = (hour: number, minute: number) => `${pad(hour)}:${pad(minute)}`
+const parseTime = (value: string) => {
+  const [hour, minute] = value.split(':').map(Number)
+  return {
+    hour: Number.isInteger(hour) ? hour : 0,
+    minute: Number.isInteger(minute) ? minute : 0,
+  }
+}
+
 export function ConfigForm({
   config,
   environment,
@@ -32,10 +42,20 @@ export function ConfigForm({
       patch.smoke_gas_threshold = form.smoke_gas_threshold
     if (form.night_mode_enabled !== config.night_mode_enabled)
       patch.night_mode_enabled = form.night_mode_enabled
-    if (form.curfew_start_hour !== config.curfew_start_hour)
+    if (
+      form.curfew_start_hour !== config.curfew_start_hour ||
+      form.curfew_start_minute !== config.curfew_start_minute
+    ) {
       patch.curfew_start_hour = form.curfew_start_hour
-    if (form.curfew_end_hour !== config.curfew_end_hour)
+      patch.curfew_start_minute = form.curfew_start_minute
+    }
+    if (
+      form.curfew_end_hour !== config.curfew_end_hour ||
+      form.curfew_end_minute !== config.curfew_end_minute
+    ) {
       patch.curfew_end_hour = form.curfew_end_hour
+      patch.curfew_end_minute = form.curfew_end_minute
+    }
     if (form.guard_mode !== config.guard_mode) patch.guard_mode = form.guard_mode
     return patch
   }
@@ -123,30 +143,44 @@ export function ConfigForm({
             )}
             {!environment && (
               <>
-                <Field label="Giờ bắt đầu giới nghiêm" id="curfew-start" hint="curfew_start_hour">
+                <Field
+                  label="Giờ bắt đầu giới nghiêm"
+                  id="curfew-start"
+                  hint="curfew_start_hour:curfew_start_minute"
+                >
                   <Input
-                    type="number"
+                    type="time"
                     id="curfew-start"
-                    min="0"
-                    max="23"
-                    step="1"
-                    value={form.curfew_start_hour}
-                    onChange={(e) =>
-                      setForm({ ...form, curfew_start_hour: Number(e.target.value) })
-                    }
+                    value={timeValue(form.curfew_start_hour, form.curfew_start_minute)}
+                    onChange={(e) => {
+                      const time = parseTime(e.target.value)
+                      setForm({
+                        ...form,
+                        curfew_start_hour: time.hour,
+                        curfew_start_minute: time.minute,
+                      })
+                    }}
                     disabled={viewer}
                     required
                   />
                 </Field>
-                <Field label="Giờ kết thúc giới nghiêm" id="curfew-end" hint="curfew_end_hour">
+                <Field
+                  label="Giờ kết thúc giới nghiêm"
+                  id="curfew-end"
+                  hint="curfew_end_hour:curfew_end_minute"
+                >
                   <Input
-                    type="number"
+                    type="time"
                     id="curfew-end"
-                    min="0"
-                    max="23"
-                    step="1"
-                    value={form.curfew_end_hour}
-                    onChange={(e) => setForm({ ...form, curfew_end_hour: Number(e.target.value) })}
+                    value={timeValue(form.curfew_end_hour, form.curfew_end_minute)}
+                    onChange={(e) => {
+                      const time = parseTime(e.target.value)
+                      setForm({
+                        ...form,
+                        curfew_end_hour: time.hour,
+                        curfew_end_minute: time.minute,
+                      })
+                    }}
                     disabled={viewer}
                     required
                   />

@@ -57,7 +57,9 @@ CREATE TABLE IF NOT EXISTS device_configs (
   telemetry_interval INTEGER NOT NULL DEFAULT 5,
   night_mode_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   curfew_start_hour SMALLINT NOT NULL DEFAULT 20 CHECK (curfew_start_hour BETWEEN 0 AND 23),
+  curfew_start_minute SMALLINT NOT NULL DEFAULT 0 CHECK (curfew_start_minute BETWEEN 0 AND 59),
   curfew_end_hour SMALLINT NOT NULL DEFAULT 6 CHECK (curfew_end_hour BETWEEN 0 AND 23),
+  curfew_end_minute SMALLINT NOT NULL DEFAULT 0 CHECK (curfew_end_minute BETWEEN 0 AND 59),
   guard_mode VARCHAR(10) NOT NULL DEFAULT 'AUTO' CHECK (guard_mode IN ('AUTO', 'ON', 'OFF')),
   fan_mode VARCHAR(10) NOT NULL DEFAULT 'AUTO' CHECK (fan_mode IN ('AUTO', 'ON', 'OFF')),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

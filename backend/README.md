@@ -119,7 +119,7 @@ Chỉ Admin nhận token thiết bị ngay sau khi đăng ký hoặc cấp lại
 
 Các lệnh người dùng: `FAN_ON`, `FAN_OFF`, `FAN_AUTO`, `BUZZER_OFF`. Các lệnh tự động bổ sung: `BUZZER_ON`, `LED_RED`. Lệnh tự động có `user_id=null`, `username=SYSTEM`.
 
-Cấu hình mặc định: ngưỡng độ ẩm 65%, ngưỡng khói 300, gửi dữ liệu mỗi 5 giây, cảnh giới bật, quạt ở chế độ AUTO. Giờ giới nghiêm lưu theo từng thiết bị trong `device_configs` (`curfew_start_hour`, `curfew_end_hour`, mặc định 20:00–06:00) và chỉnh được ở trang thiết bị Node 2. Biến `NIGHT_*` trong `.env` là giá trị mặc định/fallback.
+Cấu hình mặc định: ngưỡng độ ẩm 65%, ngưỡng khói 300, gửi dữ liệu mỗi 5 giây, cảnh giới bật, quạt ở chế độ AUTO. Giờ giới nghiêm lưu theo từng thiết bị trong `device_configs` (`curfew_start_hour`, `curfew_start_minute`, `curfew_end_hour`, `curfew_end_minute`, mặc định 20:00–06:00) và chỉnh được ở trang thiết bị Node 2 theo giờ:phút. Cảnh báo chỉ phát khi cảnh giới đang bật: `AUTO` theo giờ giới nghiêm, `ON` bất kể giờ, `OFF` thì không. Biến `NIGHT_*` trong `.env` là giá trị mặc định/fallback.
 
 ## 5. MQTT – giao kèo với Người 2
 

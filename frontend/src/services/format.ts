@@ -37,17 +37,22 @@ export function heartbeat(value: string | null, now = Date.now()) {
 }
 
 export function isNight(
-  start: number,
-  end: number,
+  startHour: number,
+  startMinute: number,
+  endHour: number,
+  endMinute: number,
   timezone: string,
   now = new Date(),
 ) {
-  const hour = Number(
-    new Intl.DateTimeFormat('en-GB', {
-      hour: '2-digit',
-      hourCycle: 'h23',
-      timeZone: timezone,
-    }).format(now),
-  )
-  return start === end || (start > end ? hour >= start || hour < end : hour >= start && hour < end)
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: timezone,
+  }).formatToParts(now)
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0)
+  const current = value('hour') * 60 + value('minute')
+  const start = startHour * 60 + startMinute
+  const end = endHour * 60 + endMinute
+  return start === end || (start > end ? current >= start || current < end : current >= start && current < end)
 }

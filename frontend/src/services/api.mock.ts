@@ -228,7 +228,9 @@ const configs: DeviceConfig[] = devices.map((device) => ({
   telemetry_interval: 5,
   night_mode_enabled: true,
   curfew_start_hour: 20,
+  curfew_start_minute: 0,
   curfew_end_hour: 6,
+  curfew_end_minute: 0,
   guard_mode: 'AUTO',
   fan_mode: 'AUTO',
   updated_at: snapshot,
@@ -329,7 +331,9 @@ const CONFIG_RANGES = {
   smoke_gas_threshold: ['Ngưỡng khói', 0, 100000],
   telemetry_interval: ['Chu kỳ dữ liệu', 1, 3600],
   curfew_start_hour: ['Giờ bắt đầu giới nghiêm', 0, 23],
+  curfew_start_minute: ['Phút bắt đầu giới nghiêm', 0, 59],
   curfew_end_hour: ['Giờ kết thúc giới nghiêm', 0, 23],
+  curfew_end_minute: ['Phút kết thúc giới nghiêm', 0, 59],
 } as const
 const wait = () => new Promise((resolve) => setTimeout(resolve, 180))
 function sessionUser(token: string) {
@@ -359,7 +363,9 @@ function defaultConfig(deviceId: number, code: string): DeviceConfig {
     telemetry_interval: 5,
     night_mode_enabled: true,
     curfew_start_hour: 20,
+    curfew_start_minute: 0,
     curfew_end_hour: 6,
+    curfew_end_minute: 0,
     guard_mode: 'AUTO',
     fan_mode: 'AUTO',
     updated_at: new Date().toISOString(),
@@ -598,7 +604,9 @@ export const mockApi: ApiClient = {
       'telemetry_interval',
       'night_mode_enabled',
       'curfew_start_hour',
+      'curfew_start_minute',
       'curfew_end_hour',
+      'curfew_end_minute',
       'guard_mode',
     ]
     if (!fields.some((field) => patch[field] !== undefined)) {
@@ -619,6 +627,12 @@ export const mockApi: ApiClient = {
         throw new HttpError(400, 'Giờ giới nghiêm phải là số nguyên từ 0 đến 23.')
       }
     }
+    for (const field of ['curfew_start_minute', 'curfew_end_minute'] as const) {
+      const value = patch[field]
+      if (value !== undefined && !Number.isInteger(value)) {
+        throw new HttpError(400, 'Phút giới nghiêm phải là số nguyên từ 0 đến 59.')
+      }
+    }
     if (patch.temperature_threshold !== undefined) {
       config.temperature_threshold = patch.temperature_threshold
     }
@@ -631,7 +645,10 @@ export const mockApi: ApiClient = {
       config.night_mode_enabled = patch.night_mode_enabled
     }
     if (patch.curfew_start_hour !== undefined) config.curfew_start_hour = patch.curfew_start_hour
+    if (patch.curfew_start_minute !== undefined)
+      config.curfew_start_minute = patch.curfew_start_minute
     if (patch.curfew_end_hour !== undefined) config.curfew_end_hour = patch.curfew_end_hour
+    if (patch.curfew_end_minute !== undefined) config.curfew_end_minute = patch.curfew_end_minute
     if (patch.guard_mode !== undefined) {
       if (!['AUTO', 'ON', 'OFF'].includes(patch.guard_mode)) {
         throw new HttpError(400, 'Chế độ cảnh giới không hợp lệ.')
