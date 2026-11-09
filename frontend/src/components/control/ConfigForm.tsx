@@ -30,8 +30,6 @@ export function ConfigForm({
       patch.humidity_threshold = form.humidity_threshold
     if (form.smoke_gas_threshold !== config.smoke_gas_threshold)
       patch.smoke_gas_threshold = form.smoke_gas_threshold
-    if (form.telemetry_interval !== config.telemetry_interval)
-      patch.telemetry_interval = form.telemetry_interval
     if (form.night_mode_enabled !== config.night_mode_enabled)
       patch.night_mode_enabled = form.night_mode_enabled
     if (form.curfew_start_hour !== config.curfew_start_hour)
@@ -67,6 +65,24 @@ export function ConfigForm({
           <div className="grid gap-4 sm:grid-cols-2">
             {environment && (
               <>
+                <Field label="Ngưỡng nhiệt độ (°C)" id="temperature" hint="temperature_threshold">
+                  <Input
+                    type="number"
+                    id="temperature"
+                    min="0"
+                    max="125"
+                    step="any"
+                    value={form.temperature_threshold ?? ''}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        temperature_threshold: Number(e.target.value),
+                      })
+                    }
+                    disabled={viewer}
+                    required
+                  />
+                </Field>
                 <Field label="Ngưỡng độ ẩm (%)" id="humidity" hint="humidity_threshold">
                   <Input
                     type="number"
@@ -137,19 +153,6 @@ export function ConfigForm({
                 </Field>
               </>
             )}
-            <Field label="Chu kỳ gửi dữ liệu (giây)" id="interval" hint="telemetry_interval">
-              <Input
-                type="number"
-                id="interval"
-                min="1"
-                max="3600"
-                step="1"
-                value={form.telemetry_interval || ''}
-                onChange={(e) => setForm({ ...form, telemetry_interval: Number(e.target.value) })}
-                disabled={viewer}
-                required
-              />
-            </Field>
           </div>
           {!environment && (
             <div className="space-y-1.5">
