@@ -1,4 +1,5 @@
 import type {
+  Actuator,
   Alert,
   AuditLog,
   ConfigPatch,
@@ -24,6 +25,7 @@ export interface DashboardData {
   telemetry: Telemetry[]
   alerts: Alert[]
   commands: DeviceCommand[]
+  actuators: Actuator[]
   audit: AuditLog[]
   users: User[]
   warehouses: Warehouse[]

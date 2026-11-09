@@ -103,6 +103,7 @@ function dashboard(overrides: Partial<DashboardData> = {}): DashboardData {
     telemetry: [reading(2, 2, at(20)), reading(1, 1, at(10))],
     alerts: [alert(1)],
     commands: [command(1)],
+    actuators: [],
     audit: [],
     users: [],
     warehouses: [],
@@ -428,5 +429,28 @@ describe('dashboard applyEvent fan mode ordering', () => {
     })
     const config = useDashboard.getState().data!.configs.find((item) => item.device_id === 1)
     expect(config!.fan_mode).toBe('AUTO')
+  })
+})
+
+describe('dashboard actuator events', () => {
+  it('turns the fan state on from a manual relay report', () => {
+    load()
+    useDashboard.getState().applyEvent({
+      type: 'actuator_status',
+      data: { device_id: 1, device_code: 'NODE1_ENV', actuator_type: 'FAN', state: true },
+    })
+    const state = useDashboard.getState().data!
+    expect(state.actuators.find((item) => item.actuator_type === 'FAN')?.state).toBe(true)
+    expect(state.presentation.fan_running).toBe(true)
+  })
+
+  it('silences the buzzer from a manual alarm report', () => {
+    load()
+    useDashboard.getState().applyEvent({
+      type: 'actuator_status',
+      data: { device_id: 2, device_code: 'NODE2_SEC', actuator_type: 'BUZZER', state: false },
+    })
+    const state = useDashboard.getState().data!
+    expect(state.presentation.buzzer_sounding).toBe(false)
   })
 })
