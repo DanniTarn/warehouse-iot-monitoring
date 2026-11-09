@@ -245,14 +245,20 @@ export default function DeviceDetail() {
               <StatCard
                 label="Cửa kho"
                 value={reading.door_status ? 'Mở' : 'Đóng'}
-                status="Ngoài giờ giới nghiêm"
-                tone="critical"
+                status={
+                  reading.door_status
+                    ? data.system.night
+                      ? 'Ngoài giờ giới nghiêm'
+                      : 'Cửa mở trong giờ làm việc'
+                    : 'Đóng'
+                }
+                tone={reading.door_status ? (data.system.night ? 'critical' : 'warning') : 'good'}
               />
               <StatCard
                 label="Chuyển động"
                 value={reading.motion_detected ? 'Có' : 'Không'}
-                status="Lần cuối 18:52"
-                tone="muted"
+                status={reading.motion_detected ? 'Có chuyển động' : 'Không có chuyển động'}
+                tone={reading.motion_detected ? 'critical' : 'muted'}
               />
               <StatCard
                 label="Còi báo động"
