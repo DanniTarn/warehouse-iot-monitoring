@@ -47,9 +47,9 @@ export function Pagination({
             Số dòng
             <NativeSelect
               aria-label="Số dòng mỗi trang"
-              wrapperClassName="w-auto"
+              wrapperClassName="w-max"
               iconClassName="right-2 size-3.5"
-              className="h-8 w-auto pl-2 pr-7 text-xs"
+              className="h-8 pl-2 pr-7 text-xs"
               value={pageSize}
               onChange={(event) => onPageSizeChange(Number(event.target.value))}
             >

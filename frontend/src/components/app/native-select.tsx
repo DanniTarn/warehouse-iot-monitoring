@@ -2,6 +2,7 @@ import type { ComponentProps } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+/** Width belongs on the wrapper so the trigger and its chevron always share one box. */
 export function NativeSelect({
   className,
   wrapperClassName,
