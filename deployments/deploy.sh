@@ -17,6 +17,11 @@ flock -w 900 9 || {
 git -C "$repo_dir" fetch --quiet --prune origin main
 target=$(git -C "$repo_dir" rev-parse origin/main)
 previous=$(cat "$state_file" 2>/dev/null || true)
+
+if [[ "${1:-}" == "--check" && "$target" == "$previous" ]]; then
+  exit 0
+fi
+
 git -C "$repo_dir" reset --hard --quiet "$target"
 
 cd "$repo_dir/deployments"
