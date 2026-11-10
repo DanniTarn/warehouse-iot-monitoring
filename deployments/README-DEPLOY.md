@@ -70,6 +70,10 @@ const char* mqtt_server = "<SITE_ADDRESS>";
 if (client.connect("NODE1_ENV", "node1", "the-node1-password")) {
 ```
 
+Each sketch also needs `secrets.h`, created from `secrets.example.h` in the same folder, with the device token copied once from its page in the app. `secrets.h` is gitignored. Every telemetry, heartbeat and ACK carries the token, and the backend drops messages from boards without one. Seeded nodes start with no token, so press **Cấp lại token** on their page first.
+
+Boards flashed before token enforcement must be reflashed. To avoid a gap, set `DEVICE_AUTH_REQUIRED=false` in `.env.prod`, deploy, reflash each node, then set it back to `true`.
+
 Node 2 also receives `guard_mode on/off` from the backend according to the curfew set on its device page. The backend re-sends it on every heartbeat and whenever the config is saved.
 
 Port 1883 is plaintext in this setup. Moving to 8883 with TLS means `WiFiClientSecure` plus the CA certificate, and closing 1883.

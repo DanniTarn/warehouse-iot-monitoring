@@ -6,6 +6,11 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include "secrets.h"
+
+#ifndef DEVICE_TOKEN
+#error "Tạo secrets.h từ secrets.example.h và dán DEVICE_TOKEN của thiết bị."
+#endif
 
 // ================= CẤU HÌNH MQTT =================
 const char* mqtt_server = "broker.hivemq.com"; 
@@ -76,10 +81,11 @@ void updateOLED(float t, float h, int gas) {
 
 // ---------------- HÀM XÁC NHẬN TRẠNG THÁI QUẠT ----------------
 void publishFanState() {
-  StaticJsonDocument<100> ackDoc;
+  StaticJsonDocument<256> ackDoc;
   ackDoc["device_id"] = "NODE1_ENV";
   ackDoc["status"] = relayState ? "FAN_ON_ACK" : "FAN_OFF_ACK";
-  char ackBuffer[128];
+  ackDoc["token"] = DEVICE_TOKEN;
+  char ackBuffer[320];
   serializeJson(ackDoc, ackBuffer);
   client.publish("khohang/NODE1_ENV/ack", ackBuffer);
 }
@@ -287,14 +293,15 @@ void loop() {
     lastMsg = now;
 
     if (!isnan(h) && !isnan(t)) {
-      StaticJsonDocument<256> doc;
+      StaticJsonDocument<384> doc;
       doc["device_id"] = "NODE1_ENV";
+      doc["token"] = DEVICE_TOKEN;
       doc["temperature"] = t;
       doc["humidity"] = h;
       doc["smoke_level"] = gas;
       doc["fan_state"] = relayState ? "ON" : "OFF";
       
-      char jsonBuffer[512];
+      char jsonBuffer[640];
       serializeJson(doc, jsonBuffer);
       
       if (client.connected()) {
@@ -305,10 +312,11 @@ void loop() {
 
   if (now - lastHeartbeat > 30000) {
     lastHeartbeat = now;
-    StaticJsonDocument<100> hbDoc;
+    StaticJsonDocument<256> hbDoc;
     hbDoc["device_id"] = "NODE1_ENV";
     hbDoc["status"] = "online";
-    char hbBuffer[256];
+    hbDoc["token"] = DEVICE_TOKEN;
+    char hbBuffer[384];
     serializeJson(hbDoc, hbBuffer);
     
     if (client.connected()) {

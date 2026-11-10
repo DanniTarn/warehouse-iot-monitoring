@@ -2,6 +2,11 @@
 #include <WiFiManager.h>      
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include "secrets.h"
+
+#ifndef DEVICE_TOKEN
+#error "Tạo secrets.h từ secrets.example.h và dán DEVICE_TOKEN của thiết bị."
+#endif
 
 // ================= CẤU HÌNH MQTT =================
 const char* mqtt_server = "broker.hivemq.com"; 
@@ -33,10 +38,11 @@ const unsigned long PIR_WARMUP_TIME = 30000;
 
 void publishAlarmState() {
   if (client.connected()) {
-    StaticJsonDocument<100> ackDoc;
+    StaticJsonDocument<256> ackDoc;
     ackDoc["device_id"] = "NODE2_SEC";
     ackDoc["status"] = alarmState ? "ALARM_ON_ACK" : "ALARM_OFF_ACK";
-    char ackBuffer[128];
+    ackDoc["token"] = DEVICE_TOKEN;
+    char ackBuffer[320];
     serializeJson(ackDoc, ackBuffer);
     client.publish("khohang/NODE2_SEC/ack", ackBuffer);
   }
@@ -177,13 +183,14 @@ void loop() {
     lastDoorState = currentDoorState;
     lastPirState = currentPirState;
 
-    StaticJsonDocument<256> doc;
+    StaticJsonDocument<384> doc;
     doc["device_id"] = "NODE2_SEC";
+    doc["token"] = DEVICE_TOKEN;
     doc["door_open"] = (currentDoorState == HIGH); 
     doc["motion_detected"] = (now > PIR_WARMUP_TIME) ? (currentPirState == HIGH) : false;
     doc["alarm_state"] = alarmState ? "ON" : "OFF";
     
-    char jsonBuffer[512];
+    char jsonBuffer[640];
     serializeJson(doc, jsonBuffer);
     
     if (client.connected()) {
@@ -194,11 +201,12 @@ void loop() {
   // 7. GỬI HEARTBEAT
   if (now - lastHeartbeat > 30000) {
     lastHeartbeat = now;
-    StaticJsonDocument<100> hbDoc;
+    StaticJsonDocument<256> hbDoc;
     hbDoc["device_id"] = "NODE2_SEC";
     hbDoc["status"] = "online";
+    hbDoc["token"] = DEVICE_TOKEN;
 
-    char hbBuffer[256];
+    char hbBuffer[384];
     serializeJson(hbDoc, hbBuffer);
     
     if (client.connected()) {

@@ -182,6 +182,7 @@ Các biến chính trong `deployments/.env` (hoặc `backend/.env`):
 | `CORS_ORIGIN` | `http://localhost:5173` | Danh sách origin, cách nhau bằng dấu phẩy |
 | `MQTT_BROKER_URL` | `mqtt://localhost:1883` | Broker MQTT |
 | `MQTT_TOPIC_PREFIX` | `khohang` | Tiền tố topic |
+| `DEVICE_AUTH_REQUIRED` | `true` | Bắt buộc token thiết bị trong mọi bản tin MQTT |
 | `OFFLINE_TIMEOUT_SECONDS` | `30` | Thời gian chờ trước khi đánh dấu mất kết nối |
 | `COMMAND_TIMEOUT_SECONDS` | `10` | Thời gian chờ ACK của lệnh |
 | `NIGHT_TIMEZONE` | `Asia/Ho_Chi_Minh` | Múi giờ tính giới nghiêm |

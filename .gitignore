@@ -4,5 +4,6 @@ build/
 .env
 *.log
 .pio/
+firmware/*/secrets.h
 .vscode/
 .idea/
