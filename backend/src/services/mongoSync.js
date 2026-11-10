@@ -59,6 +59,15 @@ async function getMongoStatus() {
   return { connected: mongoConnected(), pending: query.rows[0].pending };
 }
 
+async function purgeDeviceArchive(deviceId) {
+  if (!mongoConnected()) return { telemetry: 0, alerts: 0 };
+  const [telemetry, alerts] = await Promise.all([
+    Telemetry.deleteMany({ device_id: deviceId }),
+    Alert.deleteMany({ device_id: deviceId })
+  ]);
+  return { telemetry: telemetry.deletedCount, alerts: alerts.deletedCount };
+}
+
 function startMongoSync() {
   let busy = false;
   const run = async () => {
@@ -82,4 +91,4 @@ function startMongoSync() {
   };
 }
 
-module.exports = { syncMongoBatch, startMongoSync, getMongoStatus, retrySeconds, collectionFor };
+module.exports = { syncMongoBatch, startMongoSync, getMongoStatus, purgeDeviceArchive, retrySeconds, collectionFor };

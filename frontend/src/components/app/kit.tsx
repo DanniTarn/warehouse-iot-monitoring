@@ -277,10 +277,10 @@ export function InfoList({ rows }: { rows: [string, ReactNode][] }) {
 export function SecretToken({ token }: { token: string }) {
   const [copied, setCopied] = useState(false)
   return (
-    <div className="mt-2 flex items-center gap-2">
+    <div className="mt-2 flex min-w-0 items-center gap-2">
       <code
         aria-label="Token xác thực"
-        className="min-w-0 flex-1 overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-xs"
+        className="min-w-0 flex-1 overflow-x-auto break-all rounded-md bg-muted px-3 py-2 font-mono text-xs"
       >
         {token}
       </code>

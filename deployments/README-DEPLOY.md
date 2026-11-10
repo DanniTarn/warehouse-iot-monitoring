@@ -63,12 +63,25 @@ Check `https://<SITE_ADDRESS>/health`. It must report Postgres, Mongo and MQTT c
 
 ## 7. Firmware
 
-Point the boards at the host and give them the broker user:
+Each sketch reads everything board-specific from `secrets.h`, created from `secrets.example.h` in the same folder:
 
 ```cpp
-const char* mqtt_server = "<SITE_ADDRESS>";
-if (client.connect("NODE1_ENV", "node1", "the-node1-password")) {
+#define DEVICE_CODE "NODE1_ENV"
+#define DEVICE_TOKEN "the-token-shown-once-in-the-app"
+#define MQTT_HOST "SITE_ADDRESS"
+#define MQTT_PORT 1883
+#define MQTT_USER "node1"
+#define MQTT_PASS "the-node1-password"
+
+// Node 1 only, the security node it triggers on fire:
+#define SEC_CODE "NODE2_SEC"
 ```
+
+Topics, payload `device_id`, MQTT client ID and the setup access point all derive from `DEVICE_CODE`. Flash one board per `secrets.h`; no other edit is needed. `secrets.h` is gitignored.
+
+The broker refuses anonymous clients, so use the per-device user created in step 4. Every telemetry, heartbeat and ACK carries the token, and the backend drops messages from boards without one.
+
+Boards flashed before token enforcement must be reflashed. To avoid a gap, set `DEVICE_AUTH_REQUIRED=false` in `.env.prod`, deploy, reflash each node, then set it back to `true`.
 
 Node 2 also receives `guard_mode on/off` from the backend according to the curfew set on its device page. The backend re-sends it on every heartbeat and whenever the config is saved.
 

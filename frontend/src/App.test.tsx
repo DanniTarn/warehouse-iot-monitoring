@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { api } from './services/api'
+import { mockApi } from './services/api.mock'
 import App from './App'
 import { useAuth } from './store/auth'
 import { useDashboard } from './store/dashboard'
@@ -241,6 +242,31 @@ describe('real actions against the store', () => {
     expect(
       screen.queryByRole('button', { name: 'Cấp lại token và kích hoạt' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('deletes a decommissioned device after typing its code', async () => {
+    const user = userEvent.setup()
+    const created = await mockApi.registerDevice('mock-session-admin', {
+      device_name: 'Node xóa thử',
+      device_code: 'NODE88_SEC',
+      mac_address: '24:6F:28:88:88:88',
+      warehouse_id: null,
+      assigned_user_id: null,
+    })
+    const id = created.device.device_id
+    await mockApi.activateDevice('mock-session-admin', id)
+    await mockApi.setLifecycle('mock-session-admin', id, 'DECOMMISSIONED')
+    await open(`/devices/${id}`)
+
+    await user.click(await screen.findByRole('button', { name: 'Xóa thiết bị' }))
+    const confirm = screen.getByRole('button', { name: 'Xóa vĩnh viễn' })
+    expect(confirm).toBeDisabled()
+    await user.type(screen.getByLabelText('Mã thiết bị để xóa'), 'NODE88_SEC')
+    expect(confirm).toBeEnabled()
+    await user.click(confirm)
+
+    expect(await screen.findByRole('heading', { name: 'Thiết bị', level: 1 })).toBeVisible()
+    expect(screen.queryByText('Node xóa thử')).not.toBeInTheDocument()
   })
 
   it('keeps Save disabled when only the fan mode changed', async () => {

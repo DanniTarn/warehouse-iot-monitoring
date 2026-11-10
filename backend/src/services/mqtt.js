@@ -1,7 +1,17 @@
 const mqtt = require('mqtt');
 const { env } = require('../config/env');
+const { authorizeDevice } = require('./deviceAuth');
 
 let client;
+const rejectedAt = new Map();
+
+function warnRejected(code) {
+  const now = Date.now();
+  if (now - (rejectedAt.get(code) ?? 0) < 60000) return;
+  if (rejectedAt.size > 500) rejectedAt.clear();
+  rejectedAt.set(code, now);
+  console.warn(`Từ chối bản tin MQTT của ${code}: thiếu hoặc sai token thiết bị.`);
+}
 
 function isConnected() {
   return Boolean(client && client.connected);
@@ -29,6 +39,10 @@ async function processMessage(topic, bytes) {
   const code = parsed.code || payload.device_id || payload.device_code;
   if (typeof code !== 'string' || !/^[A-Za-z0-9_-]+$/.test(code)) return;
   if (parsed.code && (payload.device_id || payload.device_code) && (payload.device_id || payload.device_code) !== parsed.code) return;
+  if (env.deviceAuthRequired && !await authorizeDevice(code, payload.token)) {
+    warnRejected(code);
+    return;
+  }
   if (parsed.type === 'telemetry') {
     await require('./telemetry').receiveTelemetry(code, payload);
   } else if (parsed.type === 'heartbeat') {

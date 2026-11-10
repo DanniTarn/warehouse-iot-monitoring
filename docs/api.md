@@ -62,6 +62,7 @@ Lỗi trả về dạng `{ "message": "..." }` với mã 400, 401, 403, 404, 409
 | GET | `/devices/:id` | Đã đăng nhập | Một thiết bị |
 | POST | `/devices/:id/activate` | ADMIN | `REGISTERED` → `ACTIVE` |
 | POST | `/devices/:id/revive` | ADMIN | `DECOMMISSIONED` → `ACTIVE`, cấp token mới, trả `{ device, auth_token }` |
+| DELETE | `/devices/:id` | ADMIN | Xóa vĩnh viễn, chỉ khi `DECOMMISSIONED` |
 | PATCH | `/devices/:id/lifecycle` | ADMIN | `{ "status": "ACTIVE" \| "MAINTENANCE" \| "DECOMMISSIONED" }` |
 | POST | `/devices/:id/token` | ADMIN | Cấp lại token, trả một lần |
 | GET | `/devices/:id/config` | Đã đăng nhập | Cấu hình thiết bị |

@@ -1,0 +1,46 @@
+name: Firmware
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/firmware.yml'
+  pull_request:
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/firmware.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    name: Compile sketches
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create compile-time secrets
+        run: |
+          cp firmware/node1-environment/secrets.example.h firmware/node1-environment/secrets.h
+          cp firmware/node2-security/secrets.example.h firmware/node2-security/secrets.h
+      - uses: arduino/compile-sketches@v1
+        with:
+          fqbn: esp32:esp32:esp32
+          platforms: |
+            - name: esp32:esp32
+              source-url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          libraries: |
+            - name: WiFiManager
+            - name: PubSubClient
+            - name: ArduinoJson
+              version: 6.21.5
+            - name: DHT sensor library
+            - name: Adafruit Unified Sensor
+            - name: Adafruit GFX Library
+            - name: Adafruit SSD1306
+          sketch-paths: |
+            - firmware/node1-environment
+            - firmware/node2-security

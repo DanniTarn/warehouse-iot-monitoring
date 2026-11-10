@@ -124,6 +124,27 @@ export const useDashboard = create<DashboardState>((set) => ({
             },
           }
         }
+        case 'device_deleted': {
+          const deleted = change.data
+          if (!deleted) return state
+          return {
+            data: withPresentation({
+              ...data,
+              devices: data.devices.filter((device) => device.device_id !== deleted.device_id),
+              configs: data.configs.filter((config) => config.device_id !== deleted.device_id),
+              actuators: data.actuators.filter(
+                (actuator) => actuator.device_id !== deleted.device_id,
+              ),
+              commands: data.commands.filter(
+                (command) => command.device_id !== deleted.device_id,
+              ),
+              alerts: data.alerts.filter((alert) => alert.device_id !== deleted.device_id),
+              telemetry: data.telemetry.filter(
+                (row) => row.device_id !== deleted.device_id,
+              ),
+            }),
+          }
+        }
         case 'alert_created': {
           const alert = change.data
           if (!alert) return state

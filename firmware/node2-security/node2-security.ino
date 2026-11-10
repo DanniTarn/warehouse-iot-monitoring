@@ -2,10 +2,23 @@
 #include <WiFiManager.h>      
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include "secrets.h"
 
-// ================= CẤU HÌNH MQTT =================
-const char* mqtt_server = "broker.hivemq.com"; 
-const int mqtt_port = 1883;   
+#ifndef DEVICE_CODE
+#error "secrets.h thiếu DEVICE_CODE."
+#endif
+#ifndef DEVICE_TOKEN
+#error "secrets.h thiếu DEVICE_TOKEN."
+#endif
+#ifndef MQTT_HOST
+#error "secrets.h thiếu MQTT_HOST, MQTT_USER và MQTT_PASS."
+#endif
+
+// ================= TOPIC DẪN XUẤT TỪ DEVICE_CODE =================
+const String topicAck = String("khohang/") + DEVICE_CODE + "/ack";
+const String topicTelemetry = String("khohang/") + DEVICE_CODE + "/telemetry";
+const String topicCommand = String("khohang/") + DEVICE_CODE + "/command";
+const char* heartbeatTopic = "khohang/heartbeat";
 
 // ================= CẤU HÌNH PHẦN CỨNG =================
 #define PIR_PIN 13
@@ -33,12 +46,13 @@ const unsigned long PIR_WARMUP_TIME = 30000;
 
 void publishAlarmState() {
   if (client.connected()) {
-    StaticJsonDocument<100> ackDoc;
-    ackDoc["device_id"] = "NODE2_SEC";
+    StaticJsonDocument<256> ackDoc;
+    ackDoc["device_id"] = DEVICE_CODE;
     ackDoc["status"] = alarmState ? "ALARM_ON_ACK" : "ALARM_OFF_ACK";
-    char ackBuffer[128];
+    ackDoc["token"] = DEVICE_TOKEN;
+    char ackBuffer[320];
     serializeJson(ackDoc, ackBuffer);
-    client.publish("khohang/NODE2_SEC/ack", ackBuffer);
+    client.publish(topicAck.c_str(), ackBuffer);
   }
 }
 
@@ -68,8 +82,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 void reconnect() {
   if (!client.connected()) {
-    if (client.connect("NODE2_SEC")) {
-      client.subscribe("khohang/NODE2_SEC/command");
+    if (client.connect(DEVICE_CODE, MQTT_USER, MQTT_PASS)) {
+      client.subscribe(topicCommand.c_str());
     }
   }
 }
@@ -90,15 +104,16 @@ void setup() {
   Serial.println("DANG LAM NONG CAM BIEN PIR (30 giay)...");
 
   WiFiManager wm;
-  wm.setConfigPortalTimeout(20); 
+  wm.setConfigPortalTimeout(20);
+  String apName = String("ESP32_") + DEVICE_CODE + "_Setup";
   
-  if (!wm.autoConnect("ESP32_Node2_Setup")) {
+  if (!wm.autoConnect(apName.c_str())) {
     Serial.println("Khong co Wi-Fi! Chuyen sang che do OFFLINE (Edge Computing).");
   } else {
     Serial.println("Da ket noi Wi-Fi!");
   }
 
-  client.setServer(mqtt_server, mqtt_port);
+  client.setServer(MQTT_HOST, MQTT_PORT);
   client.setCallback(mqttCallback);
 }
 
@@ -177,32 +192,34 @@ void loop() {
     lastDoorState = currentDoorState;
     lastPirState = currentPirState;
 
-    StaticJsonDocument<256> doc;
-    doc["device_id"] = "NODE2_SEC";
+    StaticJsonDocument<384> doc;
+    doc["device_id"] = DEVICE_CODE;
+    doc["token"] = DEVICE_TOKEN;
     doc["door_open"] = (currentDoorState == HIGH); 
     doc["motion_detected"] = (now > PIR_WARMUP_TIME) ? (currentPirState == HIGH) : false;
     doc["alarm_state"] = alarmState ? "ON" : "OFF";
     
-    char jsonBuffer[512];
+    char jsonBuffer[640];
     serializeJson(doc, jsonBuffer);
     
     if (client.connected()) {
-      client.publish("khohang/NODE2_SEC/telemetry", jsonBuffer);
+      client.publish(topicTelemetry.c_str(), jsonBuffer);
     }
   }
 
   // 7. GỬI HEARTBEAT
   if (now - lastHeartbeat > 30000) {
     lastHeartbeat = now;
-    StaticJsonDocument<100> hbDoc;
-    hbDoc["device_id"] = "NODE2_SEC";
+    StaticJsonDocument<256> hbDoc;
+    hbDoc["device_id"] = DEVICE_CODE;
     hbDoc["status"] = "online";
+    hbDoc["token"] = DEVICE_TOKEN;
 
-    char hbBuffer[256];
+    char hbBuffer[384];
     serializeJson(hbDoc, hbBuffer);
     
     if (client.connected()) {
-      client.publish("khohang/heartbeat", hbBuffer);
+      client.publish(heartbeatTopic, hbBuffer);
     }
   }
 }

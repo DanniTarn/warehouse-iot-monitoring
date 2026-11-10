@@ -230,6 +230,23 @@ describe('dashboard applyEvent device and alert updates', () => {
   })
 })
 
+describe('dashboard device deletion', () => {
+  it('removes the device and every row scoped to it', () => {
+    load()
+    useDashboard.getState().applyEvent({
+      type: 'device_deleted',
+      data: { device_id: 2, device_code: 'NODE2_SEC' },
+    })
+    const data = useDashboard.getState().data!
+    expect(data.devices.map((device) => device.device_id)).toEqual([1])
+    expect(data.configs.map((config) => config.device_id)).toEqual([1])
+    expect(data.commands).toHaveLength(0)
+    expect(data.alerts).toHaveLength(0)
+    expect(data.telemetry.map((row) => row.device_id)).toEqual([1])
+    expect(data.presentation.buzzer_sounding).toBe(false)
+  })
+})
+
 describe('dashboard applyEvent command status', () => {
   it('replaces a known command and prepends a new one', () => {
     load()

@@ -20,6 +20,7 @@ const env = {
   mqttUsername: process.env.MQTT_USERNAME || undefined,
   mqttPassword: process.env.MQTT_PASSWORD || undefined,
   mqttClientId: process.env.MQTT_CLIENT_ID || 'warehouse-backend',
+  deviceAuthRequired: process.env.DEVICE_AUTH_REQUIRED !== 'false',
   offlineSeconds: intValue('OFFLINE_TIMEOUT_SECONDS', 30),
   commandSeconds: intValue('COMMAND_TIMEOUT_SECONDS', 10),
   nightTimezone: process.env.NIGHT_TIMEZONE || 'Asia/Ho_Chi_Minh',

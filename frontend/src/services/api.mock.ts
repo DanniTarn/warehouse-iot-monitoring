@@ -611,6 +611,27 @@ export const mockApi: ApiClient = {
       auth_token: `mock-token-${device.device_code}-${deviceId}-revive`,
     }
   },
+  async deleteDevice(token, deviceId) {
+    await wait()
+    const user = sessionUser(token)
+    requireRole(user, ['ADMIN'])
+    const device = findDevice(deviceId)
+    if (device.lifecycle_status !== 'DECOMMISSIONED') {
+      throw new HttpError(409, 'Chỉ có thể xóa thiết bị đã thu hồi.')
+    }
+    record(user, 'DELETE_DEVICE', device.device_code)
+    devices.splice(devices.indexOf(device), 1)
+    const drop = <T extends { device_id: number }>(items: T[]) => {
+      for (let index = items.length - 1; index >= 0; index -= 1)
+        if (items[index].device_id === deviceId) items.splice(index, 1)
+    }
+    drop(configs)
+    drop(actuators)
+    drop(commands)
+    drop(alerts)
+    drop(telemetry)
+    return { device_id: deviceId, device_code: device.device_code }
+  },
   async updateConfig(token, deviceId, patch) {
     await wait()
     const user = sessionUser(token)

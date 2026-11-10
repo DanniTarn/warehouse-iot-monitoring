@@ -23,7 +23,7 @@ Dashboard thời gian thực cho kho hàng: theo dõi nhiệt độ, độ ẩm,
 
 **Quản trị**
 
-- Đăng ký, kích hoạt, bảo trì, thu hồi và kích hoạt lại thiết bị đã thu hồi; cấp lại token một lần.
+- Đăng ký, kích hoạt, bảo trì, thu hồi, kích hoạt lại hoặc xóa thiết bị đã thu hồi; cấp lại token một lần.
 - Quản lý tài khoản và ba vai trò `ADMIN`, `OPERATOR`, `VIEWER`.
 - Lịch sử dữ liệu cảm biến, lệnh điều khiển và nhật ký thao tác; phân trang, lọc theo ngày và xuất CSV.
 - Nhật ký kiểm tra cho mọi thao tác ghi.
@@ -182,6 +182,7 @@ Các biến chính trong `deployments/.env` (hoặc `backend/.env`):
 | `CORS_ORIGIN` | `http://localhost:5173` | Danh sách origin, cách nhau bằng dấu phẩy |
 | `MQTT_BROKER_URL` | `mqtt://localhost:1883` | Broker MQTT |
 | `MQTT_TOPIC_PREFIX` | `khohang` | Tiền tố topic |
+| `DEVICE_AUTH_REQUIRED` | `true` | Bắt buộc token thiết bị trong mọi bản tin MQTT |
 | `OFFLINE_TIMEOUT_SECONDS` | `30` | Thời gian chờ trước khi đánh dấu mất kết nối |
 | `COMMAND_TIMEOUT_SECONDS` | `10` | Thời gian chờ ACK của lệnh |
 | `NIGHT_TIMEZONE` | `Asia/Ho_Chi_Minh` | Múi giờ tính giới nghiêm |

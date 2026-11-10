@@ -6,10 +6,27 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include "secrets.h"
 
-// ================= CẤU HÌNH MQTT =================
-const char* mqtt_server = "broker.hivemq.com"; 
-const int mqtt_port = 1883;   
+#ifndef DEVICE_CODE
+#error "secrets.h thiếu DEVICE_CODE."
+#endif
+#ifndef DEVICE_TOKEN
+#error "secrets.h thiếu DEVICE_TOKEN."
+#endif
+#ifndef SEC_CODE
+#error "secrets.h thiếu SEC_CODE cho liên kết báo cháy sang Node an ninh."
+#endif
+#ifndef MQTT_HOST
+#error "secrets.h thiếu MQTT_HOST, MQTT_USER và MQTT_PASS."
+#endif
+
+// ================= TOPIC DẪN XUẤT TỪ DEVICE_CODE =================
+const String topicAck = String("khohang/") + DEVICE_CODE + "/ack";
+const String topicTelemetry = String("khohang/") + DEVICE_CODE + "/telemetry";
+const String topicCommand = String("khohang/") + DEVICE_CODE + "/command";
+const String topicSecCommand = String("khohang/") + SEC_CODE + "/command";
+const char* heartbeatTopic = "khohang/heartbeat";
 
 // ================= CẤU HÌNH PHẦN CỨNG =================
 #define DHTPIN 4
@@ -76,12 +93,13 @@ void updateOLED(float t, float h, int gas) {
 
 // ---------------- HÀM XÁC NHẬN TRẠNG THÁI QUẠT ----------------
 void publishFanState() {
-  StaticJsonDocument<100> ackDoc;
-  ackDoc["device_id"] = "NODE1_ENV";
+  StaticJsonDocument<256> ackDoc;
+  ackDoc["device_id"] = DEVICE_CODE;
   ackDoc["status"] = relayState ? "FAN_ON_ACK" : "FAN_OFF_ACK";
-  char ackBuffer[128];
+  ackDoc["token"] = DEVICE_TOKEN;
+  char ackBuffer[320];
   serializeJson(ackDoc, ackBuffer);
-  client.publish("khohang/NODE1_ENV/ack", ackBuffer);
+  client.publish(topicAck.c_str(), ackBuffer);
 }
 
 // ---------------- HÀM NHẬN LỆNH TỪ MQTT ----------------
@@ -130,8 +148,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 void reconnect() {
   if (!client.connected()) {
-    if (client.connect("NODE1_ENV")) {
-      client.subscribe("khohang/NODE1_ENV/command");
+    if (client.connect(DEVICE_CODE, MQTT_USER, MQTT_PASS)) {
+      client.subscribe(topicCommand.c_str());
       digitalWrite(LEDPIN, HIGH); 
     } else {
       digitalWrite(LEDPIN, LOW); 
@@ -168,14 +186,15 @@ void setup() {
   // ================= TỐI ƯU WIFIMANAGER (KHÔNG TREO) =================
   WiFiManager wm;
   wm.setConfigPortalTimeout(20); // Chỉ chờ 20 giây, không có mạng sẽ đi tiếp
+  String apName = String("ESP32_") + DEVICE_CODE + "_Setup";
   
-  if (!wm.autoConnect("ESP32_Node1_Setup")) {
+  if (!wm.autoConnect(apName.c_str())) {
     Serial.println("Khong co Wi-Fi! Chuyen sang che do OFFLINE (Edge Computing).");
   } else {
     Serial.println("Da ket noi Wi-Fi!");
   }
   
-  client.setServer(mqtt_server, mqtt_port);
+  client.setServer(MQTT_HOST, MQTT_PORT);
   client.setCallback(mqttCallback);
 }
 
@@ -248,7 +267,7 @@ void loop() {
       
       // 2. Bắn lệnh MQTT chéo sang Node 2 yêu cầu HÚ CÒI
       if (client.connected()) {
-        client.publish("khohang/NODE2_SEC/command", "{\"alarm\":\"on\"}");
+        client.publish(topicSecCommand.c_str(), "{\"alarm\":\"on\"}");
       }
       
       updateOLED(t, h, gas);       
@@ -287,32 +306,34 @@ void loop() {
     lastMsg = now;
 
     if (!isnan(h) && !isnan(t)) {
-      StaticJsonDocument<256> doc;
-      doc["device_id"] = "NODE1_ENV";
+      StaticJsonDocument<384> doc;
+      doc["device_id"] = DEVICE_CODE;
+      doc["token"] = DEVICE_TOKEN;
       doc["temperature"] = t;
       doc["humidity"] = h;
       doc["smoke_level"] = gas;
       doc["fan_state"] = relayState ? "ON" : "OFF";
       
-      char jsonBuffer[512];
+      char jsonBuffer[640];
       serializeJson(doc, jsonBuffer);
       
       if (client.connected()) {
-        client.publish("khohang/NODE1_ENV/telemetry", jsonBuffer);
+        client.publish(topicTelemetry.c_str(), jsonBuffer);
       }
     }
   }
 
   if (now - lastHeartbeat > 30000) {
     lastHeartbeat = now;
-    StaticJsonDocument<100> hbDoc;
-    hbDoc["device_id"] = "NODE1_ENV";
+    StaticJsonDocument<256> hbDoc;
+    hbDoc["device_id"] = DEVICE_CODE;
     hbDoc["status"] = "online";
-    char hbBuffer[256];
+    hbDoc["token"] = DEVICE_TOKEN;
+    char hbBuffer[384];
     serializeJson(hbDoc, hbBuffer);
     
     if (client.connected()) {
-      client.publish("khohang/heartbeat", hbBuffer);
+      client.publish(heartbeatTopic, hbBuffer);
     }
   }
 }
