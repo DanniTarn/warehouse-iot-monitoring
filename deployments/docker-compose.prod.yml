@@ -41,10 +41,12 @@ services:
     restart: unless-stopped
     ports:
       - "1883:1883"
+      - "8883:8883"
     volumes:
       - ./mosquitto/config/mosquitto.prod.conf:/mosquitto/config/mosquitto.conf:ro
       - ./mosquitto/config/passwd:/mosquitto/config/passwd:ro
       - mosquitto_data:/mosquitto/data
+      - caddy_data:/caddy-data:ro
 
   backend:
     build:

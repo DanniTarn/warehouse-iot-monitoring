@@ -6,7 +6,7 @@ One small Linux VM with a public IP runs everything: Postgres, MongoDB, Mosquitt
 
 Oracle Cloud Always Free is enough. As of June 2026 it gives 2 OCPUs and 12 GB RAM on Ampere A1, plus a public IPv4. Pick a region with Ampere capacity, Ubuntu 24.04, and note the public IP.
 
-Open these TCP ports in the cloud security list and in the host firewall: 22, 80, 443, 1883.
+Open these TCP ports in the cloud security list and in the host firewall: 22, 80, 443, 1883, 8883. 1883 is temporary until every board moves to TLS.
 
 ## 2. DNS
 
@@ -69,7 +69,7 @@ Each sketch reads everything board-specific from `secrets.h`, created from `secr
 #define DEVICE_CODE "NODE1_ENV"
 #define DEVICE_TOKEN "the-token-shown-once-in-the-app"
 #define MQTT_HOST "SITE_ADDRESS"
-#define MQTT_PORT 1883
+#define MQTT_PORT 8883
 #define MQTT_USER "node1"
 #define MQTT_PASS "the-node1-password"
 
@@ -85,7 +85,16 @@ Boards flashed before token enforcement must be reflashed. To avoid a gap, set `
 
 Node 2 also receives `guard_mode on/off` from the backend according to the curfew set on its device page. The backend re-sends it on every heartbeat and whenever the config is saved.
 
-Port 1883 is plaintext in this setup. Moving to 8883 with TLS means `WiFiClientSecure` plus the CA certificate, and closing 1883.
+Devices connect over TLS on 8883 using the Let's Encrypt certificate Caddy already renews. The firmware embeds ISRG Root X1 in `mqtt-ca.h` and verifies the hostname, so `MQTT_HOST` must be `SITE_ADDRESS`, not the IP. The plaintext listener on 1883 stays for the backend container and for boards that have not been reflashed; remove its host port mapping once every board is on 8883.
+
+Mosquitto reads Caddy's certificate directly from the `caddy_data` volume. A daily systemd timer sends it SIGHUP so it picks up renewals without a restart:
+
+```sh
+sudo install -m 644 deployments/systemd/mosquitto-cert-reload.service /etc/systemd/system/
+sudo install -m 644 deployments/systemd/mosquitto-cert-reload.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now mosquitto-cert-reload.timer
+```
 
 ## 8. Update
 
