@@ -19,6 +19,26 @@ const parseTime = (value: string) => {
   }
 }
 
+type NumericDraft = {
+  temperature_threshold: string
+  humidity_threshold: string
+  smoke_gas_threshold: string
+}
+
+const numericDraft = (config: DeviceConfig): NumericDraft => ({
+  temperature_threshold: String(config.temperature_threshold ?? ''),
+  humidity_threshold: config.humidity_threshold == null ? '' : String(config.humidity_threshold),
+  smoke_gas_threshold:
+    config.smoke_gas_threshold == null ? '' : String(config.smoke_gas_threshold),
+})
+
+const numberOrNull = (text: string) => {
+  const trimmed = text.trim()
+  if (!trimmed) return null
+  const value = Number(trimmed)
+  return Number.isFinite(value) ? value : null
+}
+
 export function ConfigForm({
   config,
   environment,
@@ -29,17 +49,19 @@ export function ConfigForm({
   const viewer = useAuth((s) => s.user?.role === 'VIEWER')
   const actions = useActions()
   const [form, setForm] = useState(config)
+  const [numbers, setNumbers] = useState<NumericDraft>(() => numericDraft(config))
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   function changes(): ConfigPatch {
     const patch: ConfigPatch = {}
-    if (form.temperature_threshold !== config.temperature_threshold)
-      patch.temperature_threshold = form.temperature_threshold
-    if (form.humidity_threshold !== config.humidity_threshold)
-      patch.humidity_threshold = form.humidity_threshold
-    if (form.smoke_gas_threshold !== config.smoke_gas_threshold)
-      patch.smoke_gas_threshold = form.smoke_gas_threshold
+    const temperature = numberOrNull(numbers.temperature_threshold)
+    const humidity = numberOrNull(numbers.humidity_threshold)
+    const smoke = numberOrNull(numbers.smoke_gas_threshold)
+    if (temperature !== null && temperature !== config.temperature_threshold)
+      patch.temperature_threshold = temperature
+    if (humidity !== config.humidity_threshold) patch.humidity_threshold = humidity
+    if (smoke !== config.smoke_gas_threshold) patch.smoke_gas_threshold = smoke
     if (form.night_mode_enabled !== config.night_mode_enabled)
       patch.night_mode_enabled = form.night_mode_enabled
     if (
@@ -59,15 +81,18 @@ export function ConfigForm({
     if (form.guard_mode !== config.guard_mode) patch.guard_mode = form.guard_mode
     return patch
   }
-  const dirty = Object.keys(changes()).length > 0
+  const temperatureMissing = numbers.temperature_threshold.trim() === ''
+  const dirty = Object.keys(changes()).length > 0 || temperatureMissing
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (!dirty || pending) return
+    if (!dirty || pending || temperatureMissing) return
     setPending(true)
     setError('')
     setSaved(false)
     try {
-      setForm(await actions.updateConfig(config.device_id, changes()))
+      const updated = await actions.updateConfig(config.device_id, changes())
+      setForm(updated)
+      setNumbers(numericDraft(updated))
       setSaved(true)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Không lưu được cấu hình.')
@@ -92,12 +117,9 @@ export function ConfigForm({
                     min="0"
                     max="125"
                     step="any"
-                    value={form.temperature_threshold ?? ''}
+                    value={numbers.temperature_threshold}
                     onChange={(e) =>
-                      setForm({
-                        ...form,
-                        temperature_threshold: Number(e.target.value),
-                      })
+                      setNumbers({ ...numbers, temperature_threshold: e.target.value })
                     }
                     disabled={viewer}
                     required
@@ -110,15 +132,11 @@ export function ConfigForm({
                     min="0"
                     max="100"
                     step="any"
-                    value={form.humidity_threshold ?? ''}
+                    value={numbers.humidity_threshold}
                     onChange={(e) =>
-                      setForm({
-                        ...form,
-                        humidity_threshold: e.target.value === '' ? null : Number(e.target.value),
-                      })
+                      setNumbers({ ...numbers, humidity_threshold: e.target.value })
                     }
                     disabled={viewer}
-                    required
                   />
                 </Field>
                 <Field label="Ngưỡng khói / khí gas" id="smoke" hint="smoke_gas_threshold">
@@ -128,15 +146,11 @@ export function ConfigForm({
                     min="0"
                     max="100000"
                     step="any"
-                    value={form.smoke_gas_threshold ?? ''}
+                    value={numbers.smoke_gas_threshold}
                     onChange={(e) =>
-                      setForm({
-                        ...form,
-                        smoke_gas_threshold: e.target.value === '' ? null : Number(e.target.value),
-                      })
+                      setNumbers({ ...numbers, smoke_gas_threshold: e.target.value })
                     }
                     disabled={viewer}
-                    required
                   />
                 </Field>
               </>
@@ -232,7 +246,7 @@ export function ConfigForm({
             </p>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
-              <Button type="submit" disabled={!dirty || pending}>
+              <Button type="submit" disabled={!dirty || pending || temperatureMissing}>
                 {pending ? 'Đang lưu…' : 'Lưu cấu hình'}
               </Button>
               <Button
@@ -241,6 +255,7 @@ export function ConfigForm({
                 disabled={!dirty || pending}
                 onClick={() => {
                   setForm(config)
+                  setNumbers(numericDraft(config))
                   setError('')
                   setSaved(false)
                 }}
@@ -248,6 +263,9 @@ export function ConfigForm({
                 Hoàn tác
               </Button>
             </div>
+          )}
+          {temperatureMissing && (
+            <p className="text-xs text-destructive">Ngưỡng nhiệt độ không được để trống.</p>
           )}
           {error && <Notice error>{error}</Notice>}
           {saved && <Notice>Đã lưu cấu hình.</Notice>}

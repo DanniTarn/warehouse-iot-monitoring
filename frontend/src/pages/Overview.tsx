@@ -69,11 +69,13 @@ export default function Overview() {
   const criticalDevice = critical
     ? data.devices.find((device) => device.device_code === critical.device_code)
     : undefined
-  const criticalBuzzer = buzzerSounding(
-    data.commands,
-    criticalDevice?.device_id,
-    data.actuators,
+  const soundingSecurity = secDevices.filter((device) =>
+    buzzerSounding(data.commands, device.device_id, data.actuators),
   )
+  const criticalBuzzerDevice =
+    soundingSecurity.find(
+      (device) => device.warehouse_id === criticalDevice?.warehouse_id,
+    ) ?? soundingSecurity[0]
   function silence(device: Device | undefined) {
     if (!device) return Promise.reject(new Error('Không tìm thấy thiết bị an ninh.'))
     return actions.sendCommand(device.device_id, 'BUZZER_OFF')
@@ -131,7 +133,7 @@ export default function Overview() {
               {dateTime(critical.created_at, true)}
             </span>
             <p className="font-semibold text-red-950">{critical.alert_message}</p>
-            {criticalBuzzer && (
+            {criticalBuzzerDevice && (
               <p className="text-sm text-red-900">Còi và đèn LED đỏ đang báo động tại chỗ.</p>
             )}
             {others.length > 0 && (
@@ -150,8 +152,8 @@ export default function Overview() {
               <ActionButton
                 variant="outline"
                 size="sm"
-                disabled={!criticalBuzzer || !criticalDevice}
-                action={() => silence(criticalDevice)}
+                disabled={!criticalBuzzerDevice}
+                action={() => silence(criticalBuzzerDevice)}
                 success="Đã gửi lệnh tắt còi."
               >
                 Tắt còi

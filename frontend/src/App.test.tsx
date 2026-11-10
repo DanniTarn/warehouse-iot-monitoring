@@ -269,6 +269,18 @@ describe('real actions against the store', () => {
     expect(screen.queryByText('Node xóa thử')).not.toBeInTheDocument()
   })
 
+  it('keeps a cleared temperature threshold empty until a new value is typed', async () => {
+    const user = userEvent.setup()
+    await open('/devices/1')
+    const input = await screen.findByLabelText('Ngưỡng nhiệt độ (°C)')
+    await user.clear(input)
+    expect(input).toHaveValue(null)
+    await user.type(input, '30')
+    expect(input).toHaveValue(30)
+    await user.click(screen.getByRole('button', { name: 'Lưu cấu hình' }))
+    expect(await screen.findByText('Đã lưu cấu hình.')).toBeVisible()
+  })
+
   it('keeps Save disabled when only the fan mode changed', async () => {
     const user = userEvent.setup()
     await open('/devices/1')
@@ -329,7 +341,12 @@ describe('real actions against the store', () => {
 
 describe('overview alerts', () => {
   const door = 'Cửa kho bị mở ngoài giờ giới nghiêm'
-  function alert(alert_id: number, severity: Severity, alert_message: string): Alert {
+  function alert(
+    alert_id: number,
+    severity: Severity,
+    alert_message: string,
+    overrides: Partial<Alert> = {},
+  ): Alert {
     return {
       alert_id,
       device_id: 2,
@@ -342,6 +359,7 @@ describe('overview alerts', () => {
       resolved_by_username: null,
       created_at: '2026-10-13T21:40:00+07:00',
       resolved_at: null,
+      ...overrides,
     }
   }
   async function openOverview(alerts: Alert[]) {
@@ -358,6 +376,29 @@ describe('overview alerts', () => {
     const list = screen.getByRole('heading', { name: 'Cảnh báo đang mở' }).closest('section')!
     return { banner, list }
   }
+
+  it('enables the banner silence button for an environment alert while the security buzzer sounds', async () => {
+    const { banner } = await openOverview([
+      alert(11, 'CRITICAL', 'Nhiệt độ 26.2°C vượt ngưỡng 26°C.', {
+        device_id: 1,
+        device_code: 'NODE1_ENV',
+        alert_type: 'TEMPERATURE_CRITICAL',
+      }),
+    ])
+    const button = within(banner).getByRole('button', { name: 'Tắt còi' })
+    act(() => {
+      useDashboard.getState().applyEvent({
+        type: 'actuator_status',
+        data: {
+          device_id: 2,
+          device_code: 'NODE2_SEC',
+          actuator_type: 'BUZZER',
+          state: true,
+        },
+      })
+    })
+    expect(button).toBeEnabled()
+  })
 
   it('lists only the alerts the banner does not show and counts them in the banner', async () => {
     const { banner, list } = await openOverview([
