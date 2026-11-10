@@ -104,9 +104,9 @@ export default function Users() {
                           `Đã đổi vai trò của ${user.username}.`,
                         )
                       }
-                      wrapperClassName="w-auto"
+                      wrapperClassName="w-max"
                       iconClassName="right-2 size-3.5"
-                      className="h-8 w-auto pl-2 pr-7 font-mono text-xs"
+                      className="h-8 pl-2 pr-7 font-mono text-xs"
                     >
                       {['ADMIN', 'OPERATOR', 'VIEWER'].map((role) => (
                         <option key={role}>{role}</option>
