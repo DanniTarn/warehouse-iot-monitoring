@@ -75,6 +75,7 @@ Sửa `.env` trước khi chạy; điền `DATABASE_URL`, `MONGO_URI` và `JWT_S
 | POST | `/api/devices` | ADMIN |
 | POST | `/api/devices/:id/activate` | ADMIN |
 | POST | `/api/devices/:id/revive` | ADMIN |
+| DELETE | `/api/devices/:id` | ADMIN |
 | PATCH | `/api/devices/:id/lifecycle` | ADMIN |
 | POST | `/api/devices/:id/token` | ADMIN |
 | GET | `/api/devices/:id/config` | Đã đăng nhập |

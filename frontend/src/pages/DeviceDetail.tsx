@@ -1,9 +1,18 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
-import { KeyRound, Wrench } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { KeyRound, Trash2, Wrench } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -42,7 +51,12 @@ export default function DeviceDetail() {
   const data = useDashboard((s) => s.data)!
   const role = useAuth((s) => s.user?.role)
   const actions = useActions()
+  const navigate = useNavigate()
   const [issued, setIssued] = useState<{ deviceId: number; token: string } | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteCode, setDeleteCode] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const device = data.devices.find((d) => String(d.device_id) === deviceId)
   if (!device)
     return (
@@ -72,6 +86,19 @@ export default function DeviceDetail() {
   const buzzer = buzzerSounding(data.commands, device.device_id, data.actuators)
   const events = securityEvents(data.telemetry, device.device_id)
   const commands = data.commands.filter((command) => command.device_id === device.device_id)
+  async function remove() {
+    if (!device || deleteCode !== device.device_code) return
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      await actions.deleteDevice(device.device_id)
+      navigate('/devices')
+    } catch (reason) {
+      setDeleteError(reason instanceof Error ? reason.message : 'Không xóa được thiết bị.')
+    } finally {
+      setDeleting(false)
+    }
+  }
   const sensors: [string, string][] = environment
     ? [
         ['DHT22', 'Nhiệt độ và độ ẩm'],
@@ -119,16 +146,30 @@ export default function DeviceDetail() {
                   Kích hoạt lại
                 </ActionButton>
               ) : device.lifecycle_status === 'DECOMMISSIONED' ? (
-                <ActionButton
-                  key="revive"
-                  confirm="Cấp token mới và kích hoạt lại thiết bị đã thu hồi? Token cũ đã bị xóa. Tiếp tục?"
-                  action={async () => {
-                    const result = await actions.reviveDevice(device.device_id)
-                    setIssued({ deviceId: device.device_id, token: result.auth_token })
-                  }}
-                >
-                  Cấp lại token và kích hoạt
-                </ActionButton>
+                <>
+                  <ActionButton
+                    key="revive"
+                    confirm="Cấp token mới và kích hoạt lại thiết bị đã thu hồi? Token cũ đã bị xóa. Tiếp tục?"
+                    action={async () => {
+                      const result = await actions.reviveDevice(device.device_id)
+                      setIssued({ deviceId: device.device_id, token: result.auth_token })
+                    }}
+                  >
+                    Cấp lại token và kích hoạt
+                  </ActionButton>
+                  <Button
+                    key="delete"
+                    variant="destructive"
+                    onClick={() => {
+                      setDeleteCode('')
+                      setDeleteError('')
+                      setDeleteOpen(true)
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                    Xóa thiết bị
+                  </Button>
+                </>
               ) : (
                 <ActionButton
                   key="maintenance"
@@ -405,6 +446,42 @@ export default function DeviceDetail() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa thiết bị</DialogTitle>
+            <DialogDescription>
+              Xóa vĩnh viễn {device.device_name} ({device.device_code}), gồm cấu hình, lệnh, cảnh
+              báo và dữ liệu cảm biến. Không thể hoàn tác. Nhập mã thiết bị để xác nhận.
+            </DialogDescription>
+          </DialogHeader>
+          <label className="space-y-1.5 text-sm font-medium">
+            Mã thiết bị
+            <Input
+              aria-label="Mã thiết bị để xóa"
+              value={deleteCode}
+              onChange={(event) => setDeleteCode(event.target.value)}
+              placeholder={device.device_code}
+              autoComplete="off"
+              className="font-mono"
+            />
+          </label>
+          {deleteError && <Notice error>{deleteError}</Notice>}
+          <DialogFooter>
+            <Button variant="outline" disabled={deleting} onClick={() => setDeleteOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleting || deleteCode !== device.device_code}
+              onClick={() => void remove()}
+            >
+              {deleting ? 'Đang xóa…' : 'Xóa vĩnh viễn'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

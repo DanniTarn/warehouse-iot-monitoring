@@ -9,6 +9,7 @@ const { deviceView, guardArmed } = require('../utils/data');
 const { audit } = require('../services/audit');
 const { broadcast } = require('../services/realtime');
 const { syncThresholds, syncGuardMode } = require('../services/configSync');
+const { purgeDeviceArchive } = require('../services/mongoSync');
 
 const router = express.Router();
 router.use(verifyToken);
@@ -76,6 +77,30 @@ router.post('/:id/activate', authorizeRoles('ADMIN'), async (req, res) => {
   const device = await deviceById(id);
   publicDeviceEvent(device);
   res.json(device);
+});
+
+router.delete('/:id', authorizeRoles('ADMIN'), async (req, res) => {
+  const id = positiveId(req.params.id);
+  let code;
+  await transaction(async db => {
+    const existing = await db.query('SELECT lifecycle_status, device_code FROM nodes WHERE device_id=$1 FOR UPDATE', [id]);
+    if (!existing.rowCount) throw new HttpError(404, 'Không tìm thấy thiết bị.');
+    if (existing.rows[0].lifecycle_status !== 'DECOMMISSIONED') {
+      throw new HttpError(409, 'Chỉ có thể xóa thiết bị đã thu hồi.');
+    }
+    code = existing.rows[0].device_code;
+    await db.query(
+      `DELETE FROM mongo_outbox
+       WHERE (entity_type='telemetry' AND entity_id IN (SELECT telemetry_id FROM telemetry WHERE device_id=$1))
+          OR (entity_type='alert' AND entity_id IN (SELECT alert_id FROM alerts WHERE device_id=$1))`,
+      [id]
+    );
+    await audit('DELETE_DEVICE', req.user.user_id, { device_id: id, device_code: code }, req.ip, db);
+    await db.query('DELETE FROM nodes WHERE device_id=$1', [id]);
+  });
+  await purgeDeviceArchive(id).catch(error => console.error('Không xóa được lịch sử MongoDB của thiết bị:', error.message));
+  broadcast('device_deleted', { device_id: id, device_code: code });
+  res.json({ device_id: id, device_code: code });
 });
 
 router.post('/:id/revive', authorizeRoles('ADMIN'), async (req, res) => {

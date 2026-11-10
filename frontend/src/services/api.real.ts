@@ -164,6 +164,12 @@ export const realApi: ApiClient = {
       method: 'POST',
     })
   },
+  deleteDevice(token, deviceId) {
+    return request<{ device_id: number; device_code: string }>(`/devices/${deviceId}`, {
+      token,
+      method: 'DELETE',
+    })
+  },
   setLifecycle(token, deviceId, status) {
     return request<Device>(`/devices/${deviceId}/lifecycle`, {
       token,

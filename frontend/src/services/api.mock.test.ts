@@ -50,6 +50,29 @@ describe('mock API mirrors backend validation', () => {
     expect(result.auth_token).toBe('mock-token-NODE0_TEST-5-revive')
   })
 
+  it('deletes only a decommissioned device and clears its rows', async () => {
+    const created = await mockApi.registerDevice(admin, {
+      device_name: 'Node xóa thử',
+      device_code: 'NODE88_SEC',
+      mac_address: '24:6F:28:88:88:88',
+      warehouse_id: null,
+      assigned_user_id: null,
+    })
+    const id = created.device.device_id
+    await expect(mockApi.deleteDevice(admin, id)).rejects.toThrow(
+      'Chỉ có thể xóa thiết bị đã thu hồi.',
+    )
+    await mockApi.activateDevice(admin, id)
+    await mockApi.setLifecycle(admin, id, 'DECOMMISSIONED')
+    await expect(mockApi.deleteDevice(admin, id)).resolves.toEqual({
+      device_id: id,
+      device_code: 'NODE88_SEC',
+    })
+    const dashboard = await mockApi.dashboard(admin)
+    expect(dashboard.devices.some((device) => device.device_id === id)).toBe(false)
+    expect(dashboard.configs.some((config) => config.device_id === id)).toBe(false)
+  })
+
   it('signs a new account in with its own password only', async () => {
     await mockApi.createUser(admin, {
       username: 'mat.khau',

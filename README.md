@@ -23,7 +23,7 @@ Dashboard thời gian thực cho kho hàng: theo dõi nhiệt độ, độ ẩm,
 
 **Quản trị**
 
-- Đăng ký, kích hoạt, bảo trì, thu hồi và kích hoạt lại thiết bị đã thu hồi; cấp lại token một lần.
+- Đăng ký, kích hoạt, bảo trì, thu hồi, kích hoạt lại hoặc xóa thiết bị đã thu hồi; cấp lại token một lần.
 - Quản lý tài khoản và ba vai trò `ADMIN`, `OPERATOR`, `VIEWER`.
 - Lịch sử dữ liệu cảm biến, lệnh điều khiển và nhật ký thao tác; phân trang, lọc theo ngày và xuất CSV.
 - Nhật ký kiểm tra cho mọi thao tác ghi.

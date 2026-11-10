@@ -68,6 +68,7 @@ export interface ApiClient {
   ): Promise<{ device: Device; config: DeviceConfig; auth_token: string }>
   activateDevice(token: string, deviceId: number): Promise<Device>
   reviveDevice(token: string, deviceId: number): Promise<{ device: Device; auth_token: string }>
+  deleteDevice(token: string, deviceId: number): Promise<{ device_id: number; device_code: string }>
   setLifecycle(
     token: string,
     deviceId: number,

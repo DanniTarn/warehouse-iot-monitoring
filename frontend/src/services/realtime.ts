@@ -10,10 +10,16 @@ export interface DeviceStatusEvent {
 export type RealtimeEvent =
   | { type: 'telemetry'; data: Telemetry | null }
   | { type: 'device_status'; data: DeviceStatusEvent | null }
+  | { type: 'device_deleted'; data: DeviceDeletedEvent | null }
   | { type: 'alert_created'; data: Alert | null }
   | { type: 'alert_updated'; data: Alert | null }
   | { type: 'command_status'; data: DeviceCommand | null }
   | { type: 'actuator_status'; data: ActuatorStatusEvent | null }
+
+export interface DeviceDeletedEvent {
+  device_id: number
+  device_code: string
+}
 
 export interface ActuatorStatusEvent {
   device_id: number
@@ -35,6 +41,7 @@ const retryAfter = 10000
 const eventTypes = [
   'telemetry',
   'device_status',
+  'device_deleted',
   'alert_created',
   'alert_updated',
   'command_status',
