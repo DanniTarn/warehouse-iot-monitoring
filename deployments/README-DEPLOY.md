@@ -79,7 +79,9 @@ Each sketch reads everything board-specific from `secrets.h`, created from `secr
 
 Topics, payload `device_id`, MQTT client ID and the setup access point all derive from `DEVICE_CODE`. Flash one board per `secrets.h`; no other edit is needed. `secrets.h` is gitignored.
 
-The broker refuses anonymous clients, so use the per-device user created in step 4. Every telemetry, heartbeat and ACK carries the token, and the backend drops messages from boards without one.
+The broker refuses anonymous clients, so use the per-device user created in step 4. It also enforces a topic ACL from `mosquitto/config/acl`: a device may only publish its own telemetry and ACK, read its own command topic, and write the shared heartbeat topic. Node 1 also has write access to Node 2's command topic for its local fire trigger. The backend user may read all telemetry, ACK and heartbeat topics and write command topics.
+
+Adding a device means adding a block for its broker user to that ACL file and restarting Mosquitto. A device without an ACL block authenticates but its publishes and subscriptions are silently dropped.
 
 Boards flashed before token enforcement must be reflashed. To avoid a gap, set `DEVICE_AUTH_REQUIRED=false` in `.env.prod`, deploy, reflash each node, then set it back to `true`.
 
