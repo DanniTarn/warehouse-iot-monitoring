@@ -158,7 +158,7 @@ export default function DeviceDetail() {
       />
 
       <div className="grid items-start gap-4 lg:grid-cols-3">
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <Card className="shadow-none">
             <CardHeader>
               <CardTitle className="text-base">Thông tin</CardTitle>
@@ -223,7 +223,7 @@ export default function DeviceDetail() {
           </Card>
         </div>
 
-        <div className="space-y-4 lg:col-span-2">
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           {!reading ? (
             <Notice>Chưa có dữ liệu cảm biến cho thiết bị này.</Notice>
           ) : environment ? (
