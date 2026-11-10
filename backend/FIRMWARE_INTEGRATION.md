@@ -12,7 +12,7 @@ Bản Docker cho phép đặt `MQTT_BROKER_URL` trong `deployments/.env` nếu c
 
 Mỗi node phải gửi `token` trong mọi bản tin `telemetry`, `heartbeat` và `ack`. Token dài 64 ký tự hex, chỉ hiện một lần trên trang thiết bị. Backend băm SHA-256 rồi so với `nodes.auth_token_hash`; thiếu hoặc sai thì bản tin bị bỏ, có cảnh báo trong log tối đa một lần mỗi phút cho mỗi mã thiết bị.
 
-Firmware lấy token từ `secrets.h`, được tạo bằng cách sao chép `secrets.example.h` trong thư mục sketch. `secrets.h` nằm trong `.gitignore`, không commit token lên GitHub.
+Firmware lấy toàn bộ cấu hình riêng của board từ `secrets.h`, được tạo bằng cách sao chép `secrets.example.h` trong thư mục sketch. Tệp này chứa `DEVICE_CODE`, `DEVICE_TOKEN`, `MQTT_HOST`, `MQTT_PORT`, `MQTT_USER`, `MQTT_PASS`; Node 1 thêm `SEC_CODE`. Mọi topic và `device_id` được dẫn xuất từ `DEVICE_CODE`, nên không phải sửa chuỗi nào trong sketch. `secrets.h` nằm trong `.gitignore`, không commit token hay mật khẩu lên GitHub.
 
 ```json
 {"device_id":"NODE1_ENV","token":"<64 ký tự hex>","temperature":30,"humidity":70,"smoke_level":250,"fan_state":"ON"}
