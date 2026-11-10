@@ -94,31 +94,28 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps -
 
 ## 9. Automatic deploys
 
-A push to `main` runs `.github/workflows/deploy.yml`. It verifies both packages, then connects to the host over SSH and runs `/usr/local/sbin/warehouse-deploy`. That script fetches `origin/main`, applies the idempotent migrations, rebuilds only the services whose files changed, and waits for the API health check and the public site. The deployed commit is recorded in `~/workspace/.warehouse-deployed-sha` only after the health check passes, so a failed build or a sick container is retried by the next run.
+A systemd timer on the host checks `origin/main` every minute and runs `/usr/local/sbin/warehouse-deploy`. When the recorded SHA differs, the script fetches, applies the idempotent migrations, rebuilds only the services whose files changed, and waits for the API health check and the public site. It writes the deployed SHA to `~/workspace/.warehouse-deployed-sha` only after both checks pass, so a failed build or a sick container is retried on the next tick.
 
-Repository configuration:
+The host pulls instead of GitHub pushing because the Oracle security list does not admit the Actions runners on port 22. `.github/workflows/ci.yml` still runs lint, tests and both builds on every push and pull request. If port 22 is opened to the runner ranges later, a push-based job can call the same script over SSH without changing the deploy logic.
 
-| Name | Kind | Value |
-|------|------|-------|
-| `DEPLOY_SSH_KEY` | secret | private key of the deploy key |
-| `DEPLOY_KNOWN_HOSTS` | secret | `ssh-keyscan -H <public-ip>` output |
-| `DEPLOY_HOST` | variable | public IP of the VPS |
-| `DEPLOY_USER` | variable | `ubuntu` |
-| `SITE_ADDRESS` | variable | the Caddy host name |
-
-Host setup, once:
+Install once on the host:
 
 ```sh
 sudo install -m 755 deployments/deploy.sh /usr/local/sbin/warehouse-deploy
+sudo install -m 644 deployments/systemd/warehouse-deploy.service /etc/systemd/system/
+sudo install -m 644 deployments/systemd/warehouse-deploy.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now warehouse-deploy.timer
 ```
 
-Add the deploy public key to `~/.ssh/authorized_keys` with a forced command, so the key can only run the deploy script:
+Inspect the pipeline:
 
-```
-command="/usr/local/sbin/warehouse-deploy",restrict ssh-ed25519 AAAA... github-actions-deploy
+```sh
+systemctl list-timers warehouse-deploy.timer
+journalctl -u warehouse-deploy -n 50
 ```
 
-The checkout must track the branch that receives merges, and the script resets it to `origin/main` on every run. Run a deploy by hand from the host as the owning user, `/usr/local/sbin/warehouse-deploy`, or from the Actions tab with "Run workflow".
+The checkout must track the branch that receives merges, and the script resets it to `origin/main` on every deploy. A manual deploy is `sudo systemctl start warehouse-deploy.service` or `/usr/local/sbin/warehouse-deploy`. Run it as the user that owns the checkout, so git does not leave root-owned files behind.
 
 ## Notes
 
