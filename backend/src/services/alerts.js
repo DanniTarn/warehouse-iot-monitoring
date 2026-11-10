@@ -1,6 +1,7 @@
 const { pool } = require('../config/db');
 const { alertById } = require('./store');
 const { broadcast } = require('./realtime');
+const notifications = require('./notifications');
 
 async function createAlert(deviceId, type, severity, message) {
   const result = await pool.query(
@@ -13,6 +14,7 @@ async function createAlert(deviceId, type, severity, message) {
   if (!result.rowCount) return null;
   const alert = await alertById(result.rows[0].alert_id);
   broadcast('alert_created', alert);
+  notifications.send(alert).catch(() => {});
   console.log(`Cảnh báo ${type} từ ${alert.device_code}: ${message}`);
   return alert;
 }
