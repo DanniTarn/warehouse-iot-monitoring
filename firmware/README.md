@@ -44,6 +44,6 @@ Check in the app: the device should receive telemetry within 5 seconds and repor
 - **Compile error about `secrets.h`**: copy `secrets.example.h` to `secrets.h` in that sketch folder.
 - **Compile error about `DEVICE_CODE`**: the copy is incomplete; fill every key.
 - **MQTT never connects**: wrong `MQTT_HOST`, `MQTT_USER` or `MQTT_PASS`, a clock that cannot validate the certificate, or the network blocks outbound 8883.
-- **Telemetry never appears although the broker is connected**: the device code is not registered and activated, the token is wrong, or the backend runs with `DEVICE_AUTH_REQUIRED=true` and the payload has no valid token.
+- **Telemetry never appears although the broker is connected**: the device code is not registered and activated, the token is wrong, the broker ACL has no block for its user, or the backend runs with `DEVICE_AUTH_REQUIRED=true` and the payload has no valid token.
 - **Two boards keep disconnecting each other**: both share a `DEVICE_CODE`. Every board needs its own code, which also makes the MQTT client ID unique.
 - **Node 1 freezes at boot**: `setup()` halts when the SSD1306 display is not found. Flash a board that has the OLED, or remove the display initialization for a board without one.

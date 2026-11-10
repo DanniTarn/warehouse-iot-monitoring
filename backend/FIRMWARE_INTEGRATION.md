@@ -22,6 +22,8 @@ Mặc định `DEVICE_AUTH_REQUIRED=true`. Chỉ đặt `false` tạm thời tro
 
 Board kết nối TLS ở cổng `8883`, dùng `WiFiClientSecure` với CA `ISRG Root X1` trong `mqtt-ca.h`. `MQTT_HOST` phải là tên miền `SITE_ADDRESS`, không phải địa chỉ IP, vì chứng chỉ chỉ có SAN tên miền. Cổng `1883` chỉ còn cho backend nội bộ và các board chưa nạp lại; đóng nó sau khi tất cả board đã chuyển sang 8883.
 
+Broker cũng giới hạn topic theo user trong `deployments/mosquitto/config/acl`. Mỗi board chỉ được publish telemetry/ACK của chính nó, đọc command của chính nó và ghi topic heartbeat dùng chung; Node 1 được ghi thêm command của Node 2 cho liên kết báo cháy cục bộ. Thêm board mới thì phải thêm block ACL cho user broker của board đó, nếu không dữ liệu sẽ bị broker bỏ im lặng.
+
 Node được tạo bằng seed không có token. Trước khi nạp firmware, mở trang thiết bị và bấm **Cấp lại token** để sinh token đầu tiên, rồi dán vào `secrets.h`.
 
 ## Topic và dữ liệu

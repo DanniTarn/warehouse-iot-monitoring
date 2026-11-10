@@ -1,0 +1,24 @@
+# Per-device topic permissions for the production broker.
+# Add a block for every new device and every new broker user.
+# The backend needs broad read on telemetry/ack/heartbeat and write on commands.
+
+user node1
+topic write khohang/NODE1_ENV/telemetry
+topic write khohang/NODE1_ENV/ack
+topic write khohang/heartbeat
+topic read  khohang/NODE1_ENV/command
+# Node 1 triggers Node 2 directly on fire, even when the backend is unreachable.
+topic write khohang/NODE2_SEC/command
+
+user node2
+topic write khohang/NODE2_SEC/telemetry
+topic write khohang/NODE2_SEC/ack
+topic write khohang/heartbeat
+topic read  khohang/NODE2_SEC/command
+
+user backend
+topic read  khohang/+/telemetry
+topic read  khohang/+/ack
+topic read  khohang/+/heartbeat
+topic read  khohang/heartbeat
+topic write khohang/+/command
