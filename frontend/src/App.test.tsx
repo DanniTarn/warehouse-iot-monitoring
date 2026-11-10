@@ -227,6 +227,22 @@ describe('real actions against the store', () => {
     expect(await screen.findByText('Đã thu hồi thiết bị.')).toBeVisible()
     expect(screen.queryByLabelText('Token xác thực')).not.toBeInTheDocument()
   })
+  it('revives a decommissioned device with a fresh token', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    await open('/devices/5')
+    await user.click(
+      await screen.findByRole('button', { name: 'Cấp lại token và kích hoạt' }),
+    )
+    expect(await screen.findByLabelText('Token xác thực')).toHaveTextContent(
+      'mock-token-NODE0_TEST-5-revive',
+    )
+    expect(screen.getByText('Đang hoạt động')).toBeVisible()
+    expect(
+      screen.queryByRole('button', { name: 'Cấp lại token và kích hoạt' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('keeps Save disabled when only the fan mode changed', async () => {
     const user = userEvent.setup()
     await open('/devices/1')
@@ -343,6 +359,24 @@ describe('overview alerts', () => {
     expect(within(banner).queryByRole('link')).not.toBeInTheDocument()
     expect(within(list).queryByText(door)).not.toBeInTheDocument()
     expect(within(list).getByText('Không có cảnh báo nào khác.')).toBeVisible()
+  })
+})
+
+describe('overview device scope', () => {
+  it('follows the device picker of each kind', async () => {
+    const user = userEvent.setup()
+    await open('/')
+    const env = await screen.findByLabelText('Thiết bị môi trường')
+    const sec = screen.getByLabelText('Thiết bị an ninh')
+    expect(env).toHaveDisplayValue(/NODE1_ENV/)
+    expect(sec).toHaveDisplayValue(/NODE2_SEC/)
+
+    await user.selectOptions(env, '3')
+    expect((await screen.findAllByText('Chưa có dữ liệu')).length).toBeGreaterThan(0)
+
+    await user.selectOptions(sec, '4')
+    expect(screen.getByText('BUZZER_OFF · NODE4_SEC')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Tắt còi' })).toBeDisabled()
   })
 })
 

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageHeader } from '@/components/app/page-header'
+import { NativeSelect } from '@/components/app/native-select'
 import {
   ActionButton,
   Connection,
@@ -14,8 +15,10 @@ import {
 } from '@/components/app/kit'
 import { FanControl } from '@/components/control/FanControl'
 import { SensorChart } from '@/components/charts/SensorChart'
-import { MONITORING } from '@/services/config'
+import { getDeviceKind, MONITORING } from '@/services/config'
+import { buzzerSounding, newestTelemetry } from '@/services/dashboardView'
 import { dateTime, isNight, number } from '@/services/format'
+import type { Device } from '@/services/types'
 import { useActions } from '@/store/actions'
 import { useAuth } from '@/store/auth'
 import { useDashboard } from '@/store/dashboard'
@@ -27,12 +30,12 @@ export default function Overview() {
   const viewer = useAuth((s) => s.user?.role === 'VIEWER')
   const actions = useActions()
   const [range, setRange] = useState(1)
-  const envDevice = data.devices.find(
-    (device) => device.device_code === MONITORING.environmentCode,
-  )
-  const secDevice = data.devices.find(
-    (device) => device.device_code === MONITORING.securityCode,
-  )
+  const [envId, setEnvId] = useState<number | null>(null)
+  const [secId, setSecId] = useState<number | null>(null)
+  const envDevices = data.devices.filter((device) => getDeviceKind(device) === 'environment')
+  const secDevices = data.devices.filter((device) => getDeviceKind(device) === 'security')
+  const envDevice = envDevices.find((device) => device.device_id === envId) ?? envDevices[0]
+  const secDevice = secDevices.find((device) => device.device_id === secId) ?? secDevices[0]
   const envConfig = data.configs.find((config) => config.device_id === envDevice?.device_id)
   const secConfig = data.configs.find((config) => config.device_id === secDevice?.device_id)
   const night = isNight(
@@ -42,8 +45,8 @@ export default function Overview() {
     secConfig?.curfew_end_minute ?? 0,
     data.system.timezone,
   )
-  const env = data.telemetry.find((row) => row.device_code === MONITORING.environmentCode)
-  const sec = data.telemetry.find((row) => row.device_code === MONITORING.securityCode)
+  const env = newestTelemetry(data.telemetry, envDevice?.device_id)
+  const sec = newestTelemetry(data.telemetry, secDevice?.device_id)
   const open = data.alerts.filter((alert) => !alert.is_acknowledged)
   const critical = open.find((alert) => alert.severity === 'CRITICAL')
   const others = open.filter((alert) => alert !== critical)
@@ -62,9 +65,18 @@ export default function Overview() {
   const humidityHigh = env?.humidity != null && env.humidity > humidityThreshold
   const temperatureHigh = env?.temperature != null && env.temperature > temperatureThreshold
   const smokeHigh = env?.smoke_gas_level != null && env.smoke_gas_level > smokeThreshold
-  const silenceBuzzer = () => {
-    if (!secDevice) return Promise.reject(new Error('Không tìm thấy thiết bị an ninh.'))
-    return actions.sendCommand(secDevice.device_id, 'BUZZER_OFF')
+  const buzzer = buzzerSounding(data.commands, secDevice?.device_id, data.actuators)
+  const criticalDevice = critical
+    ? data.devices.find((device) => device.device_code === critical.device_code)
+    : undefined
+  const criticalBuzzer = buzzerSounding(
+    data.commands,
+    criticalDevice?.device_id,
+    data.actuators,
+  )
+  function silence(device: Device | undefined) {
+    if (!device) return Promise.reject(new Error('Không tìm thấy thiết bị an ninh.'))
+    return actions.sendCommand(device.device_id, 'BUZZER_OFF')
   }
   return (
     <div className="space-y-4">
@@ -119,7 +131,7 @@ export default function Overview() {
               {dateTime(critical.created_at, true)}
             </span>
             <p className="font-semibold text-red-950">{critical.alert_message}</p>
-            {data.presentation.buzzer_sounding && (
+            {criticalBuzzer && (
               <p className="text-sm text-red-900">Còi và đèn LED đỏ đang báo động tại chỗ.</p>
             )}
             {others.length > 0 && (
@@ -138,8 +150,8 @@ export default function Overview() {
               <ActionButton
                 variant="outline"
                 size="sm"
-                disabled={!data.presentation.buzzer_sounding || !secDevice}
-                action={silenceBuzzer}
+                disabled={!criticalBuzzer || !criticalDevice}
+                action={() => silence(criticalDevice)}
                 success="Đã gửi lệnh tắt còi."
               >
                 Tắt còi
@@ -152,6 +164,45 @@ export default function Overview() {
                 Xác nhận đã xử lý
               </ActionButton>
             </div>
+          )}
+        </div>
+      )}
+
+      {(envDevices.length > 1 || secDevices.length > 1) && (
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3">
+          {envDevices.length > 1 && (
+            <label className="space-y-1 text-xs font-medium text-muted-foreground">
+              Thiết bị môi trường
+              <NativeSelect
+                aria-label="Thiết bị môi trường"
+                value={envDevice?.device_id ?? ''}
+                onChange={(event) => setEnvId(Number(event.target.value))}
+                wrapperClassName="w-64"
+              >
+                {envDevices.map((device) => (
+                  <option key={device.device_id} value={device.device_id}>
+                    {device.device_name} · {device.device_code}
+                  </option>
+                ))}
+              </NativeSelect>
+            </label>
+          )}
+          {secDevices.length > 1 && (
+            <label className="space-y-1 text-xs font-medium text-muted-foreground">
+              Thiết bị an ninh
+              <NativeSelect
+                aria-label="Thiết bị an ninh"
+                value={secDevice?.device_id ?? ''}
+                onChange={(event) => setSecId(Number(event.target.value))}
+                wrapperClassName="w-64"
+              >
+                {secDevices.map((device) => (
+                  <option key={device.device_id} value={device.device_id}>
+                    {device.device_name} · {device.device_code}
+                  </option>
+                ))}
+              </NativeSelect>
+            </label>
           )}
         </div>
       )}
@@ -314,23 +365,30 @@ export default function Overview() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <FanControl />
+            <FanControl deviceId={envDevice?.device_id} />
             <div className="flex items-center justify-between gap-2">
-              <strong className="text-sm">Còi báo động</strong>
-              <Badge variant={data.presentation.buzzer_sounding ? 'destructive' : 'secondary'}>
-                {data.presentation.buzzer_sounding ? 'Đang kêu' : 'Tắt'}
+              <div className="min-w-0">
+                <strong className="text-sm">Còi báo động</strong>
+                {secDevice && (
+                  <p className="font-mono text-[11px] text-muted-foreground">
+                    {secDevice.device_code}
+                  </p>
+                )}
+              </div>
+              <Badge variant={buzzer ? 'destructive' : 'secondary'}>
+                {buzzer ? 'Đang kêu' : 'Tắt'}
               </Badge>
             </div>
             <ActionButton
               variant="outline"
-              disabled={viewer || !data.presentation.buzzer_sounding || !secDevice}
-              action={silenceBuzzer}
+              disabled={viewer || !buzzer || !secDevice}
+              action={() => silence(secDevice)}
               success="Đã gửi lệnh tắt còi."
             >
               Tắt còi
             </ActionButton>
             <p className="font-mono text-[11px] text-muted-foreground">
-              BUZZER_OFF · {MONITORING.securityCode}
+              BUZZER_OFF · {secDevice?.device_code ?? '—'}
             </p>
           </CardContent>
         </Card>
@@ -340,7 +398,7 @@ export default function Overview() {
             <CardTitle className="text-base">Thiết bị</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {data.devices.slice(0, 2).map((device) => (
+            {data.devices.map((device) => (
               <div key={device.device_id} className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
                   <Link

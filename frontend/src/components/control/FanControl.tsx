@@ -3,7 +3,7 @@ import { Fan } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Notice } from '@/components/app/kit'
-import { MONITORING } from '@/services/config'
+import { getDeviceKind } from '@/services/config'
 import { fanState } from '@/services/dashboardView'
 import type { ManualCommandType } from '@/services/types'
 import { useActions } from '@/store/actions'
@@ -25,7 +25,7 @@ export function FanControl({
   const [error, setError] = useState('')
   const target =
     deviceId ??
-    data?.devices.find((device) => device.device_code === MONITORING.environmentCode)?.device_id
+    data?.devices.find((device) => getDeviceKind(device) === 'environment')?.device_id
   const { mode, running } = data
     ? fanState(data, target)
     : { mode: undefined, running: undefined }

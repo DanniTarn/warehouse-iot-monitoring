@@ -56,6 +56,11 @@ export function useActions() {
         applyEvent({ type: 'device_saved', data: device })
         return device
       },
+      async reviveDevice(deviceId: number) {
+        const result = await audited(api.reviveDevice(session(), deviceId))
+        applyEvent({ type: 'device_saved', data: result.device })
+        return result
+      },
       async setLifecycle(
         deviceId: number,
         status: 'ACTIVE' | 'MAINTENANCE' | 'DECOMMISSIONED',

@@ -33,16 +33,8 @@ export interface DashboardData {
   warehouses: Warehouse[]
   snapshot_at: string
   presentation: {
-    fan_mode: 'auto' | 'on' | 'off'
-    fan_running: boolean
     buzzer_sounding: boolean
     led: string
-    security_events: {
-      recorded_at: string
-      sensor: string
-      description: string
-      alert_type: string | null
-    }[]
   }
 }
 export type HistoryTab = 'telemetry' | 'commands' | 'audit'
@@ -75,6 +67,7 @@ export interface ApiClient {
     input: NewDevice,
   ): Promise<{ device: Device; config: DeviceConfig; auth_token: string }>
   activateDevice(token: string, deviceId: number): Promise<Device>
+  reviveDevice(token: string, deviceId: number): Promise<{ device: Device; auth_token: string }>
   setLifecycle(
     token: string,
     deviceId: number,

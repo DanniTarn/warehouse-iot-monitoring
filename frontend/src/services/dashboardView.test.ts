@@ -3,9 +3,11 @@ import {
   buzzerSounding,
   derivePresentation,
   fanState,
+  newestTelemetry,
+  securityEvents,
   type PresentationInput,
 } from './dashboardView'
-import type { Alert, Device, DeviceCommand, DeviceConfig, Telemetry } from './types'
+import type { Actuator, Alert, Device, DeviceCommand, DeviceConfig, Telemetry } from './types'
 
 const at = (minute: number) => `2026-11-08T10:${String(minute).padStart(2, '0')}:00+07:00`
 
@@ -75,6 +77,10 @@ function command(
   }
 }
 
+function actuator(overrides: Pick<Actuator, 'device_id' | 'device_code' | 'actuator_type' | 'state'>): Actuator {
+  return { updated_at: at(11), ...overrides }
+}
+
 function alert(
   overrides: Pick<Alert, 'alert_id' | 'severity' | 'is_acknowledged'> & Partial<Alert>,
 ): Alert {
@@ -91,26 +97,37 @@ function alert(
   }
 }
 
+function fanData(
+  overrides: Partial<{
+    configs: DeviceConfig[]
+    telemetry: Telemetry[]
+    commands: DeviceCommand[]
+    actuators: Actuator[]
+  }> = {},
+) {
+  return {
+    configs: [config(1), config(2)],
+    telemetry: [],
+    commands: [],
+    ...overrides,
+  }
+}
+
 function input(overrides: Partial<PresentationInput> = {}): PresentationInput {
   return {
     devices: [device(1, 'NODE1_ENV'), device(2, 'NODE2_SEC')],
-    configs: [config(1), config(2)],
-    telemetry: [],
     alerts: [],
     commands: [],
     ...overrides,
   }
 }
 
-describe('derivePresentation fan state', () => {
-  it('lowercases the fan mode of the environment config and defaults to auto', () => {
-    expect(derivePresentation(input({ configs: [config(1, { fan_mode: 'ON' })] })).fan_mode).toBe(
-      'on',
-    )
-    expect(derivePresentation(input({ configs: [config(1, { fan_mode: 'OFF' })] })).fan_mode).toBe(
-      'off',
-    )
-    expect(derivePresentation(input({ configs: [] })).fan_mode).toBe('auto')
+describe('fan state', () => {
+  it('reads the requested environment device instead of the first one', () => {
+    const configs = [config(1), config(2), config(3, { fan_mode: 'OFF' })]
+    expect(fanState(fanData({ configs }), 3).mode).toBe('off')
+    expect(fanState(fanData({ configs }), 1).mode).toBe('auto')
+    expect(fanState(fanData({ configs: [] }), 9).mode).toBe('auto')
   })
 
   it('lets the latest acknowledged fan command decide and ignores pending ones', () => {
@@ -137,7 +154,7 @@ describe('derivePresentation fan state', () => {
         sent_at: at(30),
       }),
     ]
-    expect(derivePresentation(input({ commands })).fan_running).toBe(false)
+    expect(fanState(fanData({ commands }), 1).running).toBe(false)
     commands.push(
       command({
         command_id: 4,
@@ -147,7 +164,7 @@ describe('derivePresentation fan state', () => {
         sent_at: at(40),
       }),
     )
-    expect(derivePresentation(input({ commands })).fan_running).toBe(true)
+    expect(fanState(fanData({ commands }), 1).running).toBe(true)
   })
 
   it('falls back to humidity against the environment threshold after FAN_AUTO', () => {
@@ -169,21 +186,70 @@ describe('derivePresentation fan state', () => {
         sent_at: at(20),
       }),
     ]
-    expect(derivePresentation(input({ telemetry, commands })).fan_running).toBe(true)
+    expect(fanState(fanData({ telemetry, commands }), 1).running).toBe(true)
     expect(
-      derivePresentation(
-        input({
-          configs: [config(1, { humidity_threshold: 75 })],
-          telemetry,
-          commands,
-        }),
-      ).fan_running,
+      fanState(
+        fanData({ configs: [config(1, { humidity_threshold: 75 })], telemetry, commands }),
+        1,
+      ).running,
     ).toBe(false)
+  })
+
+  it('keeps a forced mode from the saved config when no command is in the window', () => {
+    const cool = [
+      reading({
+        telemetry_id: 1,
+        device_id: 1,
+        device_code: 'NODE1_ENV',
+        recorded_at: at(5),
+        humidity: 40,
+      }),
+    ]
+    const humid = [
+      reading({
+        telemetry_id: 1,
+        device_id: 1,
+        device_code: 'NODE1_ENV',
+        recorded_at: at(5),
+        humidity: 90,
+      }),
+    ]
+    const forcedOn = fanState(
+      fanData({ configs: [config(1, { fan_mode: 'ON' })], telemetry: cool }),
+      1,
+    )
+    expect(forcedOn.mode).toBe('on')
+    expect(forcedOn.running).toBe(true)
+    expect(
+      fanState(fanData({ configs: [config(1, { fan_mode: 'OFF' })], telemetry: humid }), 1)
+        .running,
+    ).toBe(false)
+  })
+
+  it('uses the fan relay state over remembered commands', () => {
+    const commands = [
+      command({
+        command_id: 1,
+        device_id: 1,
+        command_type: 'FAN_OFF',
+        status: 'ACKNOWLEDGED',
+        sent_at: at(10),
+      }),
+    ]
+    const actuators = [
+      actuator({ device_id: 1, device_code: 'NODE1_ENV', actuator_type: 'FAN', state: true }),
+    ]
+    expect(
+      fanState(
+        fanData({ configs: [config(1, { fan_mode: 'OFF' })], commands, actuators }),
+        1,
+      ).running,
+    ).toBe(true)
   })
 })
 
-describe('derivePresentation alarm state', () => {
-  it('sounds the buzzer only for the latest acknowledged security command', () => {
+describe('buzzer state', () => {
+  it('follows the latest acknowledged buzzer command of the requested device', () => {
     const commands = [
       command({
         command_id: 1,
@@ -206,20 +272,66 @@ describe('derivePresentation alarm state', () => {
         status: 'SENT',
         sent_at: at(30),
       }),
-    ]
-    expect(derivePresentation(input({ commands })).buzzer_sounding).toBe(false)
-    commands.push(
       command({
         command_id: 4,
-        device_id: 2,
+        device_id: 4,
         command_type: 'BUZZER_ON',
         status: 'ACKNOWLEDGED',
         sent_at: at(40),
       }),
-    )
-    expect(derivePresentation(input({ commands })).buzzer_sounding).toBe(true)
+    ]
+    expect(buzzerSounding(commands, 2)).toBe(false)
+    expect(buzzerSounding(commands, 4)).toBe(true)
+    expect(buzzerSounding(commands, 5)).toBe(false)
   })
 
+  it('uses the reported buzzer state over remembered commands', () => {
+    const commands = [
+      command({
+        command_id: 1,
+        device_id: 2,
+        command_type: 'BUZZER_ON',
+        status: 'ACKNOWLEDGED',
+        sent_at: at(10),
+      }),
+    ]
+    const actuators = [
+      actuator({ device_id: 2, device_code: 'NODE2_SEC', actuator_type: 'BUZZER', state: false }),
+    ]
+    expect(buzzerSounding(commands, 2, actuators)).toBe(false)
+  })
+
+  it('reports the dashboard buzzer as sounding when any security device sounds', () => {
+    const devices = [
+      device(1, 'NODE1_ENV'),
+      device(2, 'NODE2_SEC'),
+      device(4, 'NODE4_SEC'),
+    ]
+    const quiet = [
+      command({
+        command_id: 1,
+        device_id: 2,
+        command_type: 'BUZZER_OFF',
+        status: 'ACKNOWLEDGED',
+        sent_at: at(10),
+      }),
+    ]
+    expect(derivePresentation(input({ devices, commands: quiet })).buzzer_sounding).toBe(false)
+    const sounding = [
+      ...quiet,
+      command({
+        command_id: 2,
+        device_id: 4,
+        command_type: 'BUZZER_ON',
+        status: 'ACKNOWLEDGED',
+        sent_at: at(20),
+      }),
+    ]
+    expect(derivePresentation(input({ devices, commands: sounding })).buzzer_sounding).toBe(true)
+  })
+})
+
+describe('dashboard LED', () => {
   it('lights the LED only while an unacknowledged critical alert exists', () => {
     expect(
       derivePresentation(
@@ -244,8 +356,8 @@ describe('derivePresentation alarm state', () => {
   })
 })
 
-describe('derivePresentation security events', () => {
-  it('maps door and motion telemetry to sensor events, newest first', () => {
+describe('security events', () => {
+  it('maps door and motion telemetry of the requested device, newest first', () => {
     const telemetry = [
       reading({
         telemetry_id: 1,
@@ -271,13 +383,13 @@ describe('derivePresentation security events', () => {
       }),
       reading({
         telemetry_id: 4,
-        device_id: 1,
-        device_code: 'NODE1_ENV',
+        device_id: 4,
+        device_code: 'NODE4_SEC',
         recorded_at: at(40),
         door_status: true,
       }),
     ]
-    expect(derivePresentation(input({ telemetry })).security_events).toEqual([
+    expect(securityEvents(telemetry, 2)).toEqual([
       {
         recorded_at: at(20),
         sensor: 'HC-SR501',
@@ -291,6 +403,8 @@ describe('derivePresentation security events', () => {
         alert_type: 'DOOR_BREACH',
       },
     ])
+    expect(securityEvents(telemetry, 4)).toHaveLength(1)
+    expect(securityEvents(telemetry, 9)).toEqual([])
   })
 
   it('keeps only the five newest events', () => {
@@ -303,120 +417,40 @@ describe('derivePresentation security events', () => {
         door_status: true,
       }),
     )
-    const events = derivePresentation(input({ telemetry })).security_events
+    const events = securityEvents(telemetry, 2)
     expect(events).toHaveLength(5)
     expect(events[0].recorded_at).toBe(at(55))
     expect(events.at(-1)?.recorded_at).toBe(at(20))
   })
 })
 
-describe('per-device fan and buzzer state', () => {
-  it('reads the fan mode of the requested environment device, not the first one', () => {
-    const data = input({
-      devices: [device(1, 'NODE1_ENV'), device(2, 'NODE2_SEC'), device(3, 'NODE3_ENV')],
-      configs: [config(1), config(2), config(3, { fan_mode: 'OFF' })],
-    })
-    expect(fanState(data, 3).mode).toBe('off')
-    expect(derivePresentation(data).fan_mode).toBe('auto')
-  })
-
-  it('reads the buzzer of the requested security device', () => {
-    const commands = [
-      command({
-        command_id: 1,
-        device_id: 4,
-        command_type: 'BUZZER_ON',
-        status: 'ACKNOWLEDGED',
-        sent_at: at(5),
-      }),
-    ]
-    expect(buzzerSounding(commands, 4)).toBe(true)
-    expect(buzzerSounding(commands, 2)).toBe(false)
-  })
-})
-
-describe('derivePresentation fan state when a command left the window', () => {
-  it('keeps a forced-on fan running from the saved mode alone', () => {
+describe('newest telemetry', () => {
+  it('picks the latest reading of a device regardless of array order', () => {
     const telemetry = [
       reading({
         telemetry_id: 1,
-        device_id: 1,
-        device_code: 'NODE1_ENV',
-        recorded_at: at(5),
-        humidity: 40,
+        device_id: 3,
+        device_code: 'NODE3_ENV',
+        recorded_at: at(30),
+        temperature: 31,
       }),
-    ]
-    const state = derivePresentation(
-      input({ configs: [config(1, { fan_mode: 'ON' })], telemetry, commands: [] }),
-    )
-    expect(state.fan_mode).toBe('on')
-    expect(state.fan_running).toBe(true)
-  })
-
-  it('keeps a forced-off fan stopped even above the humidity threshold', () => {
-    const telemetry = [
       reading({
-        telemetry_id: 1,
+        telemetry_id: 2,
+        device_id: 3,
+        device_code: 'NODE3_ENV',
+        recorded_at: at(10),
+        temperature: 26,
+      }),
+      reading({
+        telemetry_id: 3,
         device_id: 1,
         device_code: 'NODE1_ENV',
-        recorded_at: at(5),
-        humidity: 90,
+        recorded_at: at(40),
+        temperature: 28,
       }),
     ]
-    const state = derivePresentation(
-      input({ configs: [config(1, { fan_mode: 'OFF' })], telemetry, commands: [] }),
-    )
-    expect(state.fan_running).toBe(false)
-  })
-})
-
-describe('reported actuator state', () => {
-  it('uses the fan relay state over remembered commands', () => {
-    const commands = [
-      command({
-        command_id: 1,
-        device_id: 1,
-        command_type: 'FAN_OFF',
-        status: 'ACKNOWLEDGED',
-        sent_at: at(10),
-      }),
-    ]
-    const actuators = [
-      {
-        device_id: 1,
-        device_code: 'NODE1_ENV',
-        actuator_type: 'FAN',
-        state: true,
-        updated_at: at(11),
-      },
-    ]
-    expect(
-      fanState(
-        { configs: [config(1, { fan_mode: 'OFF' })], telemetry: [], commands, actuators },
-        1,
-      ).running,
-    ).toBe(true)
-  })
-
-  it('uses the buzzer state over remembered commands', () => {
-    const commands = [
-      command({
-        command_id: 1,
-        device_id: 2,
-        command_type: 'BUZZER_ON',
-        status: 'ACKNOWLEDGED',
-        sent_at: at(10),
-      }),
-    ]
-    const actuators = [
-      {
-        device_id: 2,
-        device_code: 'NODE2_SEC',
-        actuator_type: 'BUZZER',
-        state: false,
-        updated_at: at(11),
-      },
-    ]
-    expect(buzzerSounding(commands, 2, actuators)).toBe(false)
+    expect(newestTelemetry(telemetry, 3)?.temperature).toBe(31)
+    expect(newestTelemetry(telemetry, 1)?.temperature).toBe(28)
+    expect(newestTelemetry(telemetry, 9)).toBeUndefined()
   })
 })

@@ -78,6 +78,27 @@ router.post('/:id/activate', authorizeRoles('ADMIN'), async (req, res) => {
   res.json(device);
 });
 
+router.post('/:id/revive', authorizeRoles('ADMIN'), async (req, res) => {
+  const id = positiveId(req.params.id);
+  const secret = tokenPair();
+  await transaction(async db => {
+    const existing = await db.query('SELECT lifecycle_status FROM nodes WHERE device_id=$1 FOR UPDATE', [id]);
+    if (!existing.rowCount) throw new HttpError(404, 'Không tìm thấy thiết bị.');
+    if (existing.rows[0].lifecycle_status !== 'DECOMMISSIONED') {
+      throw new HttpError(409, 'Chỉ có thể kích hoạt lại thiết bị đã thu hồi.');
+    }
+    await db.query(
+      `UPDATE nodes SET lifecycle_status='ACTIVE',auth_token_hash=$2,auth_token_suffix=$3,
+       activated_at=NOW(),last_heartbeat=NULL WHERE device_id=$1`,
+      [id, secret.hash, secret.suffix]
+    );
+    await audit('REVIVE_DEVICE', req.user.user_id, { device_id: id }, req.ip, db);
+  });
+  const device = await deviceById(id);
+  publicDeviceEvent(device);
+  res.json({ device, auth_token: secret.token });
+});
+
 router.patch('/:id/lifecycle', authorizeRoles('ADMIN'), async (req, res) => {
   const id = positiveId(req.params.id);
   const status = enumValue(req.body?.status, ['ACTIVE', 'MAINTENANCE', 'DECOMMISSIONED'], 'Trạng thái vòng đời');

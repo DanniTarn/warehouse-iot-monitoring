@@ -16,6 +16,8 @@ import { MONITORING } from './config'
 
 // Development fixtures only. This password and these tokens are not real credentials.
 const MOCK_PASSWORD = 'demo123'
+const MOCK_ENV_CODE = 'NODE1_ENV'
+const MOCK_SEC_CODE = 'NODE2_SEC'
 const snapshot = '2026-10-13T21:42:08+07:00'
 const stamp = (day: string, clock: string) => `2026-10-${day}T${clock}+07:00`
 const users: User[] = [
@@ -37,7 +39,7 @@ const users: User[] = [
 const devices: Device[] = [
   {
     device_id: 1,
-    device_code: MONITORING.environmentCode,
+    device_code: MOCK_ENV_CODE,
     device_name: 'Node 1 · Môi trường',
     lifecycle_status: 'ACTIVE',
     online: true,
@@ -48,7 +50,7 @@ const devices: Device[] = [
   },
   {
     device_id: 2,
-    device_code: MONITORING.securityCode,
+    device_code: MOCK_SEC_CODE,
     device_name: 'Node 2 · An ninh',
     lifecycle_status: 'ACTIVE',
     online: true,
@@ -210,7 +212,7 @@ const telemetry: Telemetry[] = Array.from({ length: 120 }, (_, index) => {
   return {
     telemetry_id: 120 - index,
     device_id: environment ? 1 : 2,
-    device_code: environment ? MONITORING.environmentCode : MONITORING.securityCode,
+    device_code: environment ? MOCK_ENV_CODE : MOCK_SEC_CODE,
     temperature: environment ? Number((28.4 + Math.sin(age / 5) * 0.7).toFixed(1)) : null,
     humidity: environment ? Number((67.2 + Math.sin(age / 7) * 3).toFixed(1)) : null,
     smoke_gas_level: environment ? Math.round(142 + Math.sin(age / 3) * 24) : null,
@@ -238,21 +240,21 @@ const configs: DeviceConfig[] = devices.map((device) => ({
 const actuators: Actuator[] = [
   {
     device_id: 1,
-    device_code: MONITORING.environmentCode,
+    device_code: MOCK_ENV_CODE,
     actuator_type: 'FAN',
     state: true,
     updated_at: snapshot,
   },
   {
     device_id: 2,
-    device_code: MONITORING.securityCode,
+    device_code: MOCK_SEC_CODE,
     actuator_type: 'BUZZER',
     state: true,
     updated_at: snapshot,
   },
   {
     device_id: 2,
-    device_code: MONITORING.securityCode,
+    device_code: MOCK_SEC_CODE,
     actuator_type: 'LED_RED',
     state: true,
     updated_at: snapshot,
@@ -322,7 +324,7 @@ const data: DashboardData = {
       created_at: stamp('10', '15:30:00'),
     },
   ],
-  presentation: derivePresentation({ devices, configs, telemetry, alerts, commands }),
+  presentation: derivePresentation({ devices, alerts, commands }),
 }
 const MANUAL_COMMANDS: string[] = ['FAN_ON', 'FAN_OFF', 'FAN_AUTO', 'BUZZER_OFF']
 const CONFIG_RANGES = {
@@ -591,6 +593,23 @@ export const mockApi: ApiClient = {
     }
     record(user, 'ROTATE_DEVICE_TOKEN', device.device_code)
     return `mock-token-${device.device_code}-${Date.now()}`
+  },
+  async reviveDevice(token, deviceId) {
+    await wait()
+    const user = sessionUser(token)
+    requireRole(user, ['ADMIN'])
+    const device = findDevice(deviceId)
+    if (device.lifecycle_status !== 'DECOMMISSIONED') {
+      throw new HttpError(409, 'Chỉ có thể kích hoạt lại thiết bị đã thu hồi.')
+    }
+    device.lifecycle_status = 'ACTIVE'
+    device.online = false
+    device.last_heartbeat = null
+    record(user, 'REVIVE_DEVICE', device.device_code)
+    return {
+      device: structuredClone(device),
+      auth_token: `mock-token-${device.device_code}-${deviceId}-revive`,
+    }
   },
   async updateConfig(token, deviceId, patch) {
     await wait()
