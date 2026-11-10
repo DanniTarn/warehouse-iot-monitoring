@@ -92,6 +92,34 @@ For a frontend-only change, avoid recreating the backend:
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps --build web
 ```
 
+## 9. Automatic deploys
+
+A push to `main` runs `.github/workflows/deploy.yml`. It verifies both packages, then connects to the host over SSH and runs `/usr/local/sbin/warehouse-deploy`. That script fetches `origin/main`, applies the idempotent migrations, rebuilds only the services whose files changed, and waits for the API health check and the public site. The deployed commit is recorded in `~/workspace/.warehouse-deployed-sha` only after the health check passes, so a failed build or a sick container is retried by the next run.
+
+Repository configuration:
+
+| Name | Kind | Value |
+|------|------|-------|
+| `DEPLOY_SSH_KEY` | secret | private key of the deploy key |
+| `DEPLOY_KNOWN_HOSTS` | secret | `ssh-keyscan -H <public-ip>` output |
+| `DEPLOY_HOST` | variable | public IP of the VPS |
+| `DEPLOY_USER` | variable | `ubuntu` |
+| `SITE_ADDRESS` | variable | the Caddy host name |
+
+Host setup, once:
+
+```sh
+sudo install -m 755 deployments/deploy.sh /usr/local/sbin/warehouse-deploy
+```
+
+Add the deploy public key to `~/.ssh/authorized_keys` with a forced command, so the key can only run the deploy script:
+
+```
+command="/usr/local/sbin/warehouse-deploy",restrict ssh-ed25519 AAAA... github-actions-deploy
+```
+
+The checkout must track the branch that receives merges, and the script resets it to `origin/main` on every run. Run a deploy by hand from the host as the owning user, `/usr/local/sbin/warehouse-deploy`, or from the Actions tab with "Run workflow".
+
 ## Notes
 
 - Caddy serves the built frontend, proxies `/api` and upgrades `/ws`.
