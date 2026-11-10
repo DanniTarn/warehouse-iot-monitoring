@@ -1,0 +1,8 @@
+[Unit]
+Description=Reload the Mosquitto TLS certificate from Caddy
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker kill -s HUP warehouse-prod-mosquitto-1

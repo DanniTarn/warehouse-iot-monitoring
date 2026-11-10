@@ -23,8 +23,8 @@ Everything specific to a board lives in `secrets.h`:
 ```cpp
 #define DEVICE_CODE "NODE3_ENV"    // must match the code registered in the app
 #define DEVICE_TOKEN "..."          // shown once on the device page
-#define MQTT_HOST "158.178.229.252"
-#define MQTT_PORT 1883
+#define MQTT_HOST "158.178.229.252.sslip.io"
+#define MQTT_PORT 8883
 #define MQTT_USER "node3"           // broker user created on the VPS
 #define MQTT_PASS "..."
 ```
@@ -37,13 +37,13 @@ The sketch derives the MQTT client ID, the setup access point name, and the ACK,
 
 The board starts an access point named `ESP32_<DEVICE_CODE>_Setup`. Connect from a phone, pick the warehouse Wi-Fi, and save. The board then connects to the broker.
 
-Check in the app: the device should receive telemetry within 5 seconds and report online. If it stays offline, check the broker user and that the board can reach port 1883 on the server.
+Check in the app: the device should receive telemetry within 5 seconds and report online. If it stays offline, check the broker user, the TLS certificate and that the board can reach port 8883 on the server.
 
 ## Troubleshooting
 
 - **Compile error about `secrets.h`**: copy `secrets.example.h` to `secrets.h` in that sketch folder.
 - **Compile error about `DEVICE_CODE`**: the copy is incomplete; fill every key.
-- **MQTT never connects**: wrong `MQTT_HOST`, `MQTT_USER` or `MQTT_PASS`, or the network blocks outbound 1883.
+- **MQTT never connects**: wrong `MQTT_HOST`, `MQTT_USER` or `MQTT_PASS`, a clock that cannot validate the certificate, or the network blocks outbound 8883.
 - **Telemetry never appears although the broker is connected**: the device code is not registered and activated, the token is wrong, or the backend runs with `DEVICE_AUTH_REQUIRED=true` and the payload has no valid token.
 - **Two boards keep disconnecting each other**: both share a `DEVICE_CODE`. Every board needs its own code, which also makes the MQTT client ID unique.
 - **Node 1 freezes at boot**: `setup()` halts when the SSD1306 display is not found. Flash a board that has the OLED, or remove the display initialization for a board without one.

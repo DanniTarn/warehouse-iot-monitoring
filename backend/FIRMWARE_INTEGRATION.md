@@ -18,7 +18,9 @@ Firmware lấy toàn bộ cấu hình riêng của board từ `secrets.h`, đư�
 {"device_id":"NODE1_ENV","token":"<64 ký tự hex>","temperature":30,"humidity":70,"smoke_level":250,"fan_state":"ON"}
 ```
 
-Mặc định `DEVICE_AUTH_REQUIRED=true`. Chỉ đặt `false` tạm thời trong lúc nạp lại firmware cho các board cũ. Token đi trên MQTT plaintext ở cổng 1883, nên ACL theo từng thiết bị trên broker vẫn là ranh giới bảo mật thật.
+Mặc định `DEVICE_AUTH_REQUIRED=true`. Chỉ đặt `false` tạm thời trong lúc nạp lại firmware cho các board cũ.
+
+Board kết nối TLS ở cổng `8883`, dùng `WiFiClientSecure` với CA `ISRG Root X1` trong `mqtt-ca.h`. `MQTT_HOST` phải là tên miền `SITE_ADDRESS`, không phải địa chỉ IP, vì chứng chỉ chỉ có SAN tên miền. Cổng `1883` chỉ còn cho backend nội bộ và các board chưa nạp lại; đóng nó sau khi tất cả board đã chuyển sang 8883.
 
 Node được tạo bằng seed không có token. Trước khi nạp firmware, mở trang thiết bị và bấm **Cấp lại token** để sinh token đầu tiên, rồi dán vào `secrets.h`.
 

@@ -6,7 +6,10 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <WiFiClientSecure.h>
+#include <time.h>
 #include "secrets.h"
+#include "mqtt-ca.h"
 
 #ifndef DEVICE_CODE
 #error "secrets.h thiếu DEVICE_CODE."
@@ -43,7 +46,7 @@ const char* heartbeatTopic = "khohang/heartbeat";
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 DHT dht(DHTPIN, DHTTYPE);
-WiFiClient espClient;
+WiFiClientSecure espClient;
 PubSubClient client(espClient);
 
 unsigned long lastMsg = 0;
@@ -195,6 +198,17 @@ void setup() {
   }
   
   client.setServer(MQTT_HOST, MQTT_PORT);
+  espClient.setCACert(MQTT_CA_CERT);
+  configTime(0, 0, "pool.ntp.org", "time.google.com");
+  Serial.print("Dang dong bo thoi gian");
+  for (int i = 0; i < 20 && time(nullptr) < 1700000000; i++) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+  if (time(nullptr) < 1700000000) {
+    Serial.println("CANH BAO: chua dong bo duoc thoi gian, TLS co the that bai.");
+  }
   client.setCallback(mqttCallback);
 }
 
