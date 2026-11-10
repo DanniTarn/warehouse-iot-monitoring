@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { DashboardData } from '../services/api'
 import type { RealtimeEvent } from '../services/realtime'
 import type { Alert, Device, DeviceCommand, DeviceConfig, Telemetry, User } from '../services/types'
+import { fanState } from '../services/dashboardView'
 import { useDashboard } from './dashboard'
 
 const at = (minute: number) => `2026-11-08T10:${String(minute).padStart(2, '0')}:00+07:00`
@@ -121,11 +122,8 @@ function dashboard(overrides: Partial<DashboardData> = {}): DashboardData {
     warehouses: [],
     snapshot_at: at(20),
     presentation: {
-      fan_mode: 'auto',
-      fan_running: false,
       buzzer_sounding: false,
       led: 'Tắt',
-      security_events: [],
     },
     ...overrides,
   }
@@ -271,7 +269,7 @@ describe('dashboard applyEvent fan mode', () => {
         status: 'ACKNOWLEDGED',
       }),
     })
-    expect(useDashboard.getState().data!.presentation.fan_mode).toBe('auto')
+    expect(fanState(useDashboard.getState().data!, 1).mode).toBe('auto')
   })
 
   it('switches to the forced mode when a user fan command is acknowledged', () => {
@@ -285,7 +283,7 @@ describe('dashboard applyEvent fan mode', () => {
         status: 'ACKNOWLEDGED',
       }),
     })
-    expect(useDashboard.getState().data!.presentation.fan_mode).toBe('off')
+    expect(fanState(useDashboard.getState().data!, 1).mode).toBe('off')
   })
 })
 
@@ -340,7 +338,7 @@ describe('dashboard local upserts', () => {
     let data = useDashboard.getState().data!
     expect(data.configs).toHaveLength(2)
     expect(data.configs[0].fan_mode).toBe('OFF')
-    expect(data.presentation.fan_mode).toBe('off')
+    expect(fanState(data, 1).mode).toBe('off')
 
     useDashboard.getState().applyEvent({
       type: 'config_saved',
@@ -349,7 +347,7 @@ describe('dashboard local upserts', () => {
     data = useDashboard.getState().data!
     expect(data.configs).toHaveLength(2)
     expect(data.configs[0]).toMatchObject({ fan_mode: 'ON', telemetry_interval: 30 })
-    expect(data.presentation.fan_mode).toBe('on')
+    expect(fanState(data, 1).mode).toBe('on')
   })
 
   it('inserts and replaces users by user_id', () => {
@@ -453,7 +451,7 @@ describe('dashboard actuator events', () => {
     })
     const state = useDashboard.getState().data!
     expect(state.actuators.find((item) => item.actuator_type === 'FAN')?.state).toBe(true)
-    expect(state.presentation.fan_running).toBe(true)
+    expect(fanState(state, 1).running).toBe(true)
   })
 
   it('silences the buzzer from a manual alarm report', () => {

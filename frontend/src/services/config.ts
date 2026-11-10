@@ -2,8 +2,6 @@ import type { Device, LifecycleStatus } from './types'
 
 // Defaults pending team confirmation, handoff section 11.
 export const MONITORING = {
-  environmentCode: 'NODE1_ENV',
-  securityCode: 'NODE2_SEC',
   smoke: { unit: 'ppm', domain: [0, 400] as [number, number], threshold: 300 },
   humidityThreshold: 65,
   offlineTimeoutSeconds: 90,

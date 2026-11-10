@@ -30,7 +30,7 @@ import { FanControl } from '@/components/control/FanControl'
 import { ConfigForm } from '@/components/control/ConfigForm'
 import { getDeviceKind, MONITORING } from '@/services/config'
 import { dateTime, isNight, number } from '@/services/format'
-import { buzzerSounding } from '@/services/dashboardView'
+import { buzzerSounding, securityEvents } from '@/services/dashboardView'
 import { useActions } from '@/store/actions'
 import { useAuth } from '@/store/auth'
 import { useDashboard } from '@/store/dashboard'
@@ -70,6 +70,7 @@ export default function DeviceDetail() {
   const smokeThreshold = config?.smoke_gas_threshold ?? MONITORING.smoke.threshold
   const smokeHigh = reading?.smoke_gas_level != null && reading.smoke_gas_level > smokeThreshold
   const buzzer = buzzerSounding(data.commands, device.device_id, data.actuators)
+  const events = securityEvents(data.telemetry, device.device_id)
   const commands = data.commands.filter((command) => command.device_id === device.device_id)
   const sensors: [string, string][] = environment
     ? [
@@ -117,11 +118,21 @@ export default function DeviceDetail() {
                 >
                   Kích hoạt lại
                 </ActionButton>
+              ) : device.lifecycle_status === 'DECOMMISSIONED' ? (
+                <ActionButton
+                  key="revive"
+                  confirm="Cấp token mới và kích hoạt lại thiết bị đã thu hồi? Token cũ đã bị xóa. Tiếp tục?"
+                  action={async () => {
+                    const result = await actions.reviveDevice(device.device_id)
+                    setIssued({ deviceId: device.device_id, token: result.auth_token })
+                  }}
+                >
+                  Cấp lại token và kích hoạt
+                </ActionButton>
               ) : (
                 <ActionButton
                   key="maintenance"
                   variant="outline"
-                  disabled={device.lifecycle_status === 'DECOMMISSIONED'}
                   action={() => actions.setLifecycle(device.device_id, 'MAINTENANCE')}
                   success="Đã chuyển thiết bị sang bảo trì."
                 >
@@ -351,7 +362,7 @@ export default function DeviceDetail() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {data.presentation.security_events.map((event) => (
+                      {events.map((event) => (
                         <TableRow key={`${event.recorded_at}-${event.sensor}`}>
                           <TableCell className="font-mono text-xs">
                             {dateTime(event.recorded_at, true)}
@@ -369,7 +380,7 @@ export default function DeviceDetail() {
                       ))}
                     </TableBody>
                   </Table>
-                  {!data.presentation.security_events.length && (
+                  {!events.length && (
                     <p className="px-4 py-8 text-center text-sm text-muted-foreground">
                       Chưa có sự kiện an ninh.
                     </p>

@@ -120,7 +120,7 @@ export const realApi: ApiClient = {
         newest(telemetry.map((row) => row.recorded_at)) ??
         newest(devices.map((device) => device.last_heartbeat)) ??
         new Date().toISOString(),
-      presentation: derivePresentation({ devices, configs, telemetry, alerts, commands, actuators }),
+      presentation: derivePresentation({ devices, alerts, commands, actuators }),
     }
     return data
   },
@@ -157,6 +157,12 @@ export const realApi: ApiClient = {
   },
   activateDevice(token, deviceId) {
     return request<Device>(`/devices/${deviceId}/activate`, { token, method: 'POST' })
+  },
+  reviveDevice(token, deviceId) {
+    return request<{ device: Device; auth_token: string }>(`/devices/${deviceId}/revive`, {
+      token,
+      method: 'POST',
+    })
   },
   setLifecycle(token, deviceId, status) {
     return request<Device>(`/devices/${deviceId}/lifecycle`, {

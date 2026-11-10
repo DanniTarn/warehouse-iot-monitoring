@@ -37,6 +37,19 @@ describe('mock API mirrors backend validation', () => {
     ).rejects.toThrow('Loại lệnh không hợp lệ.')
   })
 
+  it('revives only a decommissioned device and returns a fresh token', async () => {
+    await expect(mockApi.reviveDevice(admin, 2)).rejects.toThrow(
+      'Chỉ có thể kích hoạt lại thiết bị đã thu hồi.',
+    )
+    const result = await mockApi.reviveDevice(admin, 5)
+    expect(result.device).toMatchObject({
+      lifecycle_status: 'ACTIVE',
+      online: false,
+      last_heartbeat: null,
+    })
+    expect(result.auth_token).toBe('mock-token-NODE0_TEST-5-revive')
+  })
+
   it('signs a new account in with its own password only', async () => {
     await mockApi.createUser(admin, {
       username: 'mat.khau',
